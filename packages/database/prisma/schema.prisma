@@ -16,8 +16,12 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  apps      App[]
-  tokens    ApiToken[]
+  apps        App[]
+  users       TenantUser[]
+  tokens      ApiToken[]
+  apiEvents   ApiEvent[]
+  metrics     UsageMetric[]
+  auditLogs   AuditLog[]
 }
 
 model App {
@@ -25,23 +29,141 @@ model App {
   tenantId  String
   name      String
   slug      String
+  baseUrl   String?
   status    String   @default("active")
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tokens    ApiToken[]
+  apiEvents ApiEvent[]
 
   @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model User {
+  id           String    @id @default(uuid())
+  name         String?
+  email        String    @unique
+  passwordHash String
+  status       String    @default("active")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenants        TenantUser[]
+  refreshSessions RefreshSession[]
+  auditLogs      AuditLog[]
+}
+
+model TenantUser {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String
+  role      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
 }
 
 model ApiToken {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   tenantId   String
+  appId      String?
   name       String
   prefix     String
   tokenHash  String
   scopes     String[]
-  status     String   @default("active")
+  status     String    @default("active")
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+  app        App?      @relation(fields: [appId], references: [id])
+  apiEvents  ApiEvent[]
+
+  @@unique([prefix])
+  @@index([tenantId])
+  @@index([appId])
+}
+
+model RefreshSession {
+  id           String    @id @default(uuid())
+  userId       String
+  tokenHash    String
+  userAgent    String?
+  ipHash       String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  rotatedAt    DateTime?
+
+  user         User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model ApiEvent {
+  id         String   @id @default(uuid())
+  tenantId   String?
+  appId      String?
+  tokenId    String?
+  requestId  String
+  method     String
+  path       String
+  statusCode Int
+  durationMs Int
+  ipHash     String?
+  userAgent  String?
   createdAt  DateTime @default(now())
 
-  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  tenant     Tenant?  @relation(fields: [tenantId], references: [id])
+  app        App?     @relation(fields: [appId], references: [id])
+  token      ApiToken? @relation(fields: [tokenId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([appId, createdAt])
+  @@index([requestId])
+}
+
+model UsageMetric {
+  id          String   @id @default(uuid())
+  tenantId    String
+  metricName  String
+  metricValue Decimal
+  source      String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, metricName, createdAt])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  tenantId    String?
+  actorUserId String?
+  action      String
+  entity      String
+  entityId    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id])
+  actorUser   User?    @relation(fields: [actorUserId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([entity, entityId])
 }
