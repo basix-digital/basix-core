@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  status    String   @default("active")
+  plan      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  apps      App[]
+  tokens    ApiToken[]
+}
+
+model App {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  slug      String
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, slug])
+}
+
+model ApiToken {
+  id         String   @id @default(uuid())
+  tenantId   String
+  name       String
+  prefix     String
+  tokenHash  String
+  scopes     String[]
+  status     String   @default("active")
+  createdAt  DateTime @default(now())
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+}
