@@ -142,12 +142,14 @@ model UsageMetric {
   metricName  String
   metricValue Decimal
   source      String?
+  periodStart DateTime?
   metadata    Json?
   createdAt   DateTime @default(now())
 
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId, metricName, createdAt])
+  @@unique([tenantId, metricName, source, periodStart])
 }
 
 model AuditLog {
