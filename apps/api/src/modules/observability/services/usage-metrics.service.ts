@@ -17,6 +17,8 @@ interface UsageTrendRow {
 }
 
 const DEFAULT_METRICS_WINDOW_DAYS = 30;
+const MAX_METRICS_WINDOW_DAYS = 90;
+const API_EVENT_AGGREGATOR_SOURCE = "api_event_aggregator";
 
 @Injectable()
 export class UsageMetricsService {
@@ -130,33 +132,27 @@ export class UsageMetricsService {
     const day = range.from.toISOString().slice(0, 10);
 
     await this.prisma.$transaction([
-      this.prisma.usageMetric.create({
-        data: {
-          tenantId,
-          metricName: "requests_per_day",
-          metricValue: totalRequests,
-          source: "api_event_aggregator",
-          metadata: { day },
-        },
-      }),
-      this.prisma.usageMetric.create({
-        data: {
-          tenantId,
-          metricName: "errors_per_day",
-          metricValue: errorRequests,
-          source: "api_event_aggregator",
-          metadata: { day },
-        },
-      }),
-      this.prisma.usageMetric.create({
-        data: {
-          tenantId,
-          metricName: "avg_latency",
-          metricValue: averageLatencyMs,
-          source: "api_event_aggregator",
-          metadata: { day },
-        },
-      }),
+      this.buildDailyMetricUpsert(
+        tenantId,
+        "requests_per_day",
+        totalRequests,
+        range.from,
+        day,
+      ),
+      this.buildDailyMetricUpsert(
+        tenantId,
+        "errors_per_day",
+        errorRequests,
+        range.from,
+        day,
+      ),
+      this.buildDailyMetricUpsert(
+        tenantId,
+        "avg_latency",
+        averageLatencyMs,
+        range.from,
+        day,
+      ),
     ]);
 
     return {
@@ -166,6 +162,37 @@ export class UsageMetricsService {
       errorRequests,
       averageLatencyMs,
     };
+  }
+
+  private buildDailyMetricUpsert(
+    tenantId: string,
+    metricName: string,
+    metricValue: number,
+    periodStart: Date,
+    day: string,
+  ) {
+    return this.prisma.usageMetric.upsert({
+      where: {
+        tenantId_metricName_source_periodStart: {
+          tenantId,
+          metricName,
+          source: API_EVENT_AGGREGATOR_SOURCE,
+          periodStart,
+        },
+      },
+      update: {
+        metricValue,
+        metadata: { day },
+      },
+      create: {
+        tenantId,
+        metricName,
+        metricValue,
+        source: API_EVENT_AGGREGATOR_SOURCE,
+        periodStart,
+        metadata: { day },
+      },
+    });
   }
 
   private async getTopApps(tenantId: string, range: MetricsRange) {
@@ -301,6 +328,15 @@ export class UsageMetricsService {
 
     if (from >= to) {
       throw new BadRequestException("from must be before to");
+    }
+
+    if (
+      to.getTime() - from.getTime() >
+      MAX_METRICS_WINDOW_DAYS * 24 * 60 * 60 * 1000
+    ) {
+      throw new BadRequestException(
+        `metrics range cannot exceed ${MAX_METRICS_WINDOW_DAYS} days`,
+      );
     }
 
     return { from, to };
