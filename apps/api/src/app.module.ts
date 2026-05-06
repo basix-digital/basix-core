@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { rootEnvFilePath } from "./config/env-file-path";
 import { validateEnv } from "./config/env.validation";
 import { ApiTokenModule } from "./modules/api-token/api-token.module";
 import { AppsModule } from "./modules/app/app.module";
@@ -16,7 +17,7 @@ import { HealthController } from "./health.controller";
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: "../../.env",
+      envFilePath: rootEnvFilePath,
       validate: validateEnv,
     }),
     PrismaModule,
