@@ -4,6 +4,7 @@ import { validateEnv } from "./config/env.validation";
 import { ApiTokenModule } from "./modules/api-token/api-token.module";
 import { AppsModule } from "./modules/app/app.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { BillingModule } from "./modules/billing/billing.module";
 import { CommonModule } from "./modules/common/common.module";
 import { EnforcementModule } from "./modules/enforcement/enforcement.module";
 import { ObservabilityModule } from "./modules/observability/observability.module";
@@ -25,6 +26,7 @@ import { HealthController } from "./health.controller";
     ApiTokenModule,
     ObservabilityModule,
     EnforcementModule,
+    BillingModule,
   ],
   controllers: [HealthController],
 })
