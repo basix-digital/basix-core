@@ -35,6 +35,7 @@ const getJwtAccessExpiresIn = (configService: ConfigService) =>
     TenantContextService,
   ],
   exports: [
+    JwtModule,
     JwtAdminGuard,
     ApiTokenGuard,
     ScopesGuard,
