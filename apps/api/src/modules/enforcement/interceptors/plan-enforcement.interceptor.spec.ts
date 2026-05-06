@@ -25,6 +25,9 @@ describe('PlanEnforcementInterceptor', () => {
     const context = {
       switchToHttp: () => ({
         getRequest: () => ({}),
+        getResponse: () => ({
+          setHeader: jest.fn(),
+        }),
       }),
     };
 
@@ -56,6 +59,9 @@ describe('PlanEnforcementInterceptor', () => {
           tenantId: 'tenant-1',
           appId: 'app-1',
           apiTokenId: 'token-1',
+        }),
+        getResponse: () => ({
+          setHeader: jest.fn(),
         }),
       }),
     };
