@@ -1,13 +1,18 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import * as argon2 from "argon2";
 import { PrismaService } from "../../prisma/prisma.service";
 import { ApiTokenTenantContext } from "./request-context.types";
 
 const TOKEN_PUBLIC_PREFIX = "bxs";
+const DEFAULT_LAST_USED_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
 
 @Injectable()
 export class TenantContextService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async resolveFromApiToken(rawToken: string): Promise<ApiTokenTenantContext> {
     const prefix = this.extractTokenPrefix(rawToken);
@@ -23,6 +28,8 @@ export class TenantContextService {
         appId: true,
         tokenHash: true,
         status: true,
+        scopes: true,
+        lastUsedAt: true,
         revokedAt: true,
         expiresAt: true,
         app: {
@@ -71,14 +78,25 @@ export class TenantContextService {
       tenantId: token.tenantId,
       appId: token.appId,
       apiTokenId: token.id,
+      apiTokenScopes: token.scopes,
+      apiTokenLastUsedAt: token.lastUsedAt,
     };
   }
 
-  touchApiToken(apiTokenId: string) {
+  touchApiToken(apiTokenId: string, lastUsedAt: Date | null) {
+    const now = new Date();
+    const threshold = this.getLastUsedTouchThreshold(now);
+    if (lastUsedAt && lastUsedAt > threshold) {
+      return;
+    }
+
     void this.prisma.apiToken
-      .update({
-        where: { id: apiTokenId },
-        data: { lastUsedAt: new Date() },
+      .updateMany({
+        where: {
+          id: apiTokenId,
+          OR: [{ lastUsedAt: null }, { lastUsedAt: { lte: threshold } }],
+        },
+        data: { lastUsedAt: now },
       })
       .catch(() => undefined);
   }
@@ -99,5 +117,20 @@ export class TenantContextService {
 
   private isExpired(expiresAt: Date | null) {
     return Boolean(expiresAt && expiresAt <= new Date());
+  }
+
+  private getLastUsedTouchThreshold(now: Date) {
+    return new Date(now.getTime() - this.getLastUsedTouchIntervalMs());
+  }
+
+  private getLastUsedTouchIntervalMs() {
+    const value = Number(
+      this.configService.get("API_TOKEN_LAST_USED_TOUCH_INTERVAL_MS") ??
+        DEFAULT_LAST_USED_TOUCH_INTERVAL_MS,
+    );
+
+    return Number.isFinite(value) && value > 0
+      ? value
+      : DEFAULT_LAST_USED_TOUCH_INTERVAL_MS;
   }
 }

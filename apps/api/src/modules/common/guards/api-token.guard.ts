@@ -22,8 +22,12 @@ export class ApiTokenGuard implements CanActivate {
     request.tenantId = tenantContext.tenantId;
     request.appId = tenantContext.appId;
     request.apiTokenId = tenantContext.apiTokenId;
+    request.apiTokenScopes = tenantContext.apiTokenScopes;
 
-    this.tenantContext.touchApiToken(tenantContext.apiTokenId);
+    this.tenantContext.touchApiToken(
+      tenantContext.apiTokenId,
+      tenantContext.apiTokenLastUsedAt,
+    );
 
     return true;
   }
