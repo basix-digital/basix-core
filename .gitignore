@@ -1,0 +1,96 @@
+# =========================
+# Node / JS / TS
+# =========================
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# Env files
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDEs / Editors
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# Turborepo
+# =========================
+.turbo/
+
+# =========================
+# Prisma
+# =========================
+prisma/migrations/
+*.db
+*.sqlite
+
+# =========================
+# Docker
+# =========================
+docker-data/
+*.pid
+
+# =========================
+# Tests
+# =========================
+coverage/
+.nyc_output/
+
+# =========================
+# Python (agents-api)
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyc.*
+*.env
+.venv/
+venv/
+.env.python
+pip-wheel-metadata/
+dist-python/
+build-python/
+
+# =========================
+# Misc
+# =========================
+*.tgz
+*.zip
+*.tar.gz
+
+# =========================
+# Git
+# =========================
+.gitignore.bak

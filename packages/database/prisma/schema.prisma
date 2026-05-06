@@ -16,12 +16,15 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  apps        App[]
-  users       TenantUser[]
-  tokens      ApiToken[]
-  apiEvents   ApiEvent[]
-  metrics     UsageMetric[]
-  auditLogs   AuditLog[]
+  apps          App[]
+  users         TenantUser[]
+  tokens        ApiToken[]
+  apiEvents     ApiEvent[]
+  metrics       UsageMetric[]
+  auditLogs     AuditLog[]
+  subscriptions Subscription[]
+  invoices      Invoice[]
+  billingEvents BillingEvent[]
 }
 
 model App {
@@ -51,9 +54,10 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  tenants        TenantUser[]
+  tenants         TenantUser[]
   refreshSessions RefreshSession[]
-  auditLogs      AuditLog[]
+  auditLogs       AuditLog[]
+  billingEvents   BillingEvent[]
 }
 
 model TenantUser {
@@ -75,7 +79,7 @@ model TenantUser {
 model ApiToken {
   id         String    @id @default(uuid())
   tenantId   String
-  appId      String?
+  appId      String
   name       String
   prefix     String
   tokenHash  String
@@ -88,7 +92,7 @@ model ApiToken {
   updatedAt  DateTime  @updatedAt
 
   tenant     Tenant    @relation(fields: [tenantId], references: [id])
-  app        App?      @relation(fields: [appId], references: [id])
+  app        App       @relation(fields: [appId], references: [id])
   apiEvents  ApiEvent[]
 
   @@unique([prefix])
@@ -142,12 +146,82 @@ model UsageMetric {
   metricName  String
   metricValue Decimal
   source      String?
+  periodStart DateTime?
   metadata    Json?
   createdAt   DateTime @default(now())
 
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId, metricName, createdAt])
+  @@unique([tenantId, metricName, source, periodStart])
+}
+
+model Subscription {
+  id                 String   @id @default(uuid())
+  tenantId           String
+  plan               String
+  status             String   @default("trialing")
+  billingCycle       String   @default("monthly")
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  trialEndsAt        DateTime?
+  graceEndsAt        DateTime?
+  canceledAt         DateTime?
+  suspendedAt        DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant             Tenant   @relation(fields: [tenantId], references: [id])
+  invoices           Invoice[]
+  billingEvents      BillingEvent[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([currentPeriodEnd])
+}
+
+model Invoice {
+  id             String   @id @default(uuid())
+  tenantId       String
+  subscriptionId String?
+  status         String   @default("draft")
+  amountCents    Int
+  currency       String   @default("BRL")
+  dueAt          DateTime
+  paidAt         DateTime?
+  externalRef    String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  billingEvents  BillingEvent[]
+
+  @@index([tenantId, status])
+  @@index([subscriptionId])
+  @@index([dueAt])
+}
+
+model BillingEvent {
+  id             String   @id @default(uuid())
+  tenantId       String
+  subscriptionId String?
+  invoiceId      String?
+  actorUserId    String?
+  type           String
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  invoice        Invoice? @relation(fields: [invoiceId], references: [id])
+  actorUser      User? @relation(fields: [actorUserId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([subscriptionId])
+  @@index([invoiceId])
+  @@index([type])
 }
 
 model AuditLog {
