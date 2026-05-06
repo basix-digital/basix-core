@@ -3,7 +3,8 @@ import {
   ExecutionContext,
   Injectable,
   NestInterceptor,
-  TooManyRequestsException,
+  HttpException,
+  HttpStatus,
 } from "@nestjs/common";
 import { Observable } from "rxjs";
 import { AuthenticatedRequest } from "../../common/context/request-context.types";
@@ -55,12 +56,15 @@ export class PlanEnforcementInterceptor implements NestInterceptor {
     if (deniedDecision) {
       response.setHeader("Retry-After", deniedDecision.retryAfterSeconds);
 
-      throw new TooManyRequestsException({
-        message: `rate limit exceeded for ${deniedDecision.dimension}`,
-        dimension: deniedDecision.dimension,
-        retryAfterSeconds: deniedDecision.retryAfterSeconds,
-        remaining: deniedDecision.remaining,
-      });
+      throw new HttpException(
+        {
+          message: `rate limit exceeded for ${deniedDecision.dimension}`,
+          dimension: deniedDecision.dimension,
+          retryAfterSeconds: deniedDecision.retryAfterSeconds,
+          remaining: deniedDecision.remaining,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
 
     const quota = await this.planLimitService.validateTenantRequestQuota(
@@ -74,12 +78,15 @@ export class PlanEnforcementInterceptor implements NestInterceptor {
     }
 
     if (quota.quotaExceeded) {
-      throw new TooManyRequestsException({
-        message: "monthly plan quota exceeded",
-        plan: quota.plan,
-        monthlyRequestLimit: quota.monthlyRequestLimit,
-        currentMonthlyRequests: quota.currentMonthlyRequests,
-      });
+      throw new HttpException(
+        {
+          message: "monthly plan quota exceeded",
+          plan: quota.plan,
+          monthlyRequestLimit: quota.monthlyRequestLimit,
+          currentMonthlyRequests: quota.currentMonthlyRequests,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
 
     return next.handle();
