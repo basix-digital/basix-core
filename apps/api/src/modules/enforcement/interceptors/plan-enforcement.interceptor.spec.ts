@@ -1,8 +1,8 @@
-import { HttpException } from '@nestjs/common';
-import { of } from 'rxjs';
-import { PlanEnforcementInterceptor } from './plan-enforcement.interceptor';
+import { HttpException } from "@nestjs/common";
+import { of } from "rxjs";
+import { PlanEnforcementInterceptor } from "./plan-enforcement.interceptor";
 
-describe('PlanEnforcementInterceptor', () => {
+describe("PlanEnforcementInterceptor", () => {
   const rateLimitService = {
     evaluate: jest.fn(),
   };
@@ -21,7 +21,7 @@ describe('PlanEnforcementInterceptor', () => {
     );
   });
 
-  it('skips admin routes without tenant context', async () => {
+  it("skips admin routes without tenant context", async () => {
     const context = {
       switchToHttp: () => ({
         getRequest: () => ({}),
@@ -41,14 +41,21 @@ describe('PlanEnforcementInterceptor', () => {
     expect(rateLimitService.evaluate).not.toHaveBeenCalled();
   });
 
-  it('throws when monthly quota is exceeded', async () => {
+  it("throws when monthly quota is exceeded", async () => {
     rateLimitService.evaluate.mockReturnValue([
-      { allowed: true, dimension: 'token' },
+      {
+        allowed: true,
+        dimension: "token",
+        limit: 300,
+        remaining: 299,
+        resetAt: new Date(),
+        retryAfterSeconds: 60,
+      },
     ]);
 
     planLimitService.validateTenantRequestQuota.mockResolvedValue({
       quotaExceeded: true,
-      plan: 'Starter',
+      plan: "Starter",
       monthlyRequestLimit: 10000,
       currentMonthlyRequests: 10001,
     });
@@ -56,9 +63,9 @@ describe('PlanEnforcementInterceptor', () => {
     const context = {
       switchToHttp: () => ({
         getRequest: () => ({
-          tenantId: 'tenant-1',
-          appId: 'app-1',
-          apiTokenId: 'token-1',
+          tenantId: "tenant-1",
+          appId: "app-1",
+          apiTokenId: "token-1",
         }),
         getResponse: () => ({
           setHeader: jest.fn(),
