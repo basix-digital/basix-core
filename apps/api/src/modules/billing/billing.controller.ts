@@ -26,4 +26,14 @@ export class BillingController {
   async suspendTenant(@Param("tenantId") tenantId: string) {
     return this.billingService.suspendTenantBilling(tenantId);
   }
+
+  @Post("invoice/:invoiceId/pay")
+  async markInvoiceAsPaid(@Param("invoiceId") invoiceId: string) {
+    return this.billingService.markInvoiceAsPaid(invoiceId);
+  }
+
+  @Post("subscriptions/process-overdue")
+  async processOverdueSubscriptions() {
+    return this.billingService.processOverdueSubscriptions();
+  }
 }

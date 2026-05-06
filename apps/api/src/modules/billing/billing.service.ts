@@ -92,4 +92,70 @@ export class BillingService {
       status: "suspended",
     };
   }
+  async markInvoiceAsPaid(invoiceId: string) {
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id: invoiceId },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException("invoice not found");
+    }
+
+    const paidAt = new Date();
+
+    await this.prisma.invoice.update({
+      where: { id: invoiceId },
+      data: {
+        status: "paid",
+        paidAt,
+      },
+    });
+
+    await this.prisma.billingEvent.create({
+      data: {
+        tenantId: invoice.tenantId,
+        invoiceId: invoice.id,
+        subscriptionId: invoice.subscriptionId,
+        type: "invoice_paid",
+      },
+    });
+
+    await this.prisma.tenant.update({
+      where: { id: invoice.tenantId },
+      data: {
+        status: "active",
+      },
+    });
+
+    return {
+      success: true,
+      invoiceId,
+      status: "paid",
+    };
+  }
+
+  async processOverdueSubscriptions() {
+    const now = new Date();
+
+    const overdueSubscriptions = await this.prisma.subscription.findMany({
+      where: {
+        status: {
+          in: ["active", "past_due"],
+        },
+        graceEndsAt: {
+          not: null,
+          lt: now,
+        },
+        suspendedAt: null,
+      },
+    });
+
+    for (const subscription of overdueSubscriptions) {
+      await this.suspendTenantBilling(subscription.tenantId);
+    }
+
+    return {
+      processed: overdueSubscriptions.length,
+    };
+  }
 }
