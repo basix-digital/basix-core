@@ -44,6 +44,7 @@ export class TenantAccessService {
     const app = await this.prisma.app.findFirst({
       where: {
         id: appId,
+        status: "active",
         tenant: {
           status: "active",
           users: {
