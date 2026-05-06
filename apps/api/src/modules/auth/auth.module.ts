@@ -1,8 +1,11 @@
-import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
-import { PrismaModule } from '../prisma/prisma.module';
+import { Module } from "@nestjs/common";
+import { JwtModule, JwtModuleOptions } from "@nestjs/jwt";
+import { AuthController } from "./auth.controller";
+import { AuthService } from "./auth.service";
+import { PrismaModule } from "../prisma/prisma.module";
+
+const jwtAccessExpiresIn = (process.env.JWT_ACCESS_EXPIRES_IN ||
+  "15m") as NonNullable<JwtModuleOptions["signOptions"]>["expiresIn"];
 
 @Module({
   imports: [
@@ -10,7 +13,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     JwtModule.register({
       secret: process.env.JWT_ACCESS_SECRET,
       signOptions: {
-        expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
+        expiresIn: jwtAccessExpiresIn,
       },
     }),
   ],
