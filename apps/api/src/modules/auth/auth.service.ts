@@ -24,9 +24,13 @@ export class AuthService {
 
   async refreshSession(sessionValue: string) {
     const sessions = await this.prisma.refreshSession.findMany({
-      where: { revokedAt: null },
+      where: {
+        revokedAt: null,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
       orderBy: { createdAt: 'desc' },
-      take: 20,
     });
 
     for (const session of sessions) {
@@ -49,9 +53,13 @@ export class AuthService {
 
   async logout(sessionValue: string) {
     const sessions = await this.prisma.refreshSession.findMany({
-      where: { revokedAt: null },
+      where: {
+        revokedAt: null,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
       orderBy: { createdAt: 'desc' },
-      take: 20,
     });
 
     for (const session of sessions) {
