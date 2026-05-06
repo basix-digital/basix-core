@@ -4,6 +4,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { PrismaService } from "../../prisma/prisma.service";
 import {
@@ -16,6 +17,7 @@ export class JwtAdminGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -55,7 +57,7 @@ export class JwtAdminGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync<JwtAdminPayload>(
         token,
         {
-          secret: process.env.JWT_ACCESS_SECRET,
+          secret: this.configService.getOrThrow<string>("JWT_ACCESS_SECRET"),
         },
       );
 
