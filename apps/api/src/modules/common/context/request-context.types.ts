@@ -17,6 +17,8 @@ export interface ApiTokenTenantContext {
   tenantId: string;
   appId: string;
   apiTokenId: string;
+  apiTokenScopes: string[];
+  apiTokenLastUsedAt: Date | null;
 }
 
 export interface AuthenticatedRequest extends Request {
@@ -25,4 +27,5 @@ export interface AuthenticatedRequest extends Request {
   tenantRole?: string;
   appId?: string;
   apiTokenId?: string;
+  apiTokenScopes?: string[];
 }
