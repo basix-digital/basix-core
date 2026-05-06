@@ -5,7 +5,15 @@ import { AuthService } from './auth.service';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  imports: [PrismaModule, JwtModule.register({})],
+  imports: [
+    PrismaModule,
+    JwtModule.register({
+      secret: process.env.JWT_ACCESS_SECRET,
+      signOptions: {
+        expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
+      },
+    }),
+  ],
   controllers: [AuthController],
   providers: [AuthService],
   exports: [AuthService],
