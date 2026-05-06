@@ -6,13 +6,14 @@
   "types": "./src/index.ts",
   "scripts": {
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
     "db:migrate": "dotenv -e ../../.env -- prisma migrate dev",
     "db:generate": "dotenv -e ../../.env -- prisma generate",
     "db:deploy": "dotenv -e ../../.env -- prisma migrate deploy"
   },
   "dependencies": {
-    "@prisma/client": "^6.2.1"
+    "@prisma/client": "^6.2.1",
+    "argon2": "^0.41.1"
   },
   "devDependencies": {
     "prisma": "^6.2.1",
