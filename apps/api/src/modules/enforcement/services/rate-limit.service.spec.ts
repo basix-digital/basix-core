@@ -30,6 +30,7 @@ describe('RateLimitService', () => {
       lastDecision = decisions.find((decision) => decision.dimension === 'token');
     }
 
-    expect(lastDecision.allowed).toBe(false);
+    expect(lastDecision).toBeDefined();
+    expect(lastDecision?.allowed).toBe(false);
   });
 });
