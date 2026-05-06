@@ -1,4 +1,4 @@
-import { NotFoundException } from "@nestjs/common";
+import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
 import { TenantAccessService } from "./tenant-access.service";
 
@@ -44,6 +44,28 @@ describe("TenantAccessService", () => {
         },
       },
       select: expect.any(Object),
+    });
+  });
+
+  it("rejects tenant access when the user has no tenant membership", async () => {
+    prismaMock.tenantUser.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.assertTenantAccess("user-id", "tenant-id"),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(prismaMock.tenantUser.findFirst).toHaveBeenCalledWith({
+      where: {
+        tenantId: "tenant-id",
+        userId: "user-id",
+        role: { in: ["OWNER", "ADMIN"] },
+        tenant: { status: "active" },
+      },
+      select: {
+        tenantId: true,
+        userId: true,
+        role: true,
+      },
     });
   });
 });

@@ -11,15 +11,23 @@ describe("TenantContextService", () => {
   const prismaMock = {
     apiToken: {
       findUnique: jest.fn(),
-      update: jest.fn(),
+      updateMany: jest.fn(),
     },
+  };
+  const configMock = {
+    get: jest.fn(),
   };
 
   let service: TenantContextService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new TenantContextService(prismaMock as unknown as PrismaService);
+    configMock.get.mockReturnValue(300000);
+    prismaMock.apiToken.updateMany.mockResolvedValue({ count: 1 });
+    service = new TenantContextService(
+      prismaMock as unknown as PrismaService,
+      configMock as never,
+    );
   });
 
   it("resolves tenant context from a valid API token", async () => {
@@ -29,6 +37,8 @@ describe("TenantContextService", () => {
       appId: "app-id",
       tokenHash: "hash",
       status: "active",
+      scopes: ["metrics:write"],
+      lastUsedAt: null,
       revokedAt: null,
       expiresAt: null,
       app: {
@@ -49,6 +59,8 @@ describe("TenantContextService", () => {
       tenantId: "tenant-id",
       appId: "app-id",
       apiTokenId: "token-id",
+      apiTokenScopes: ["metrics:write"],
+      apiTokenLastUsedAt: null,
     });
     expect(prismaMock.apiToken.findUnique).toHaveBeenCalledWith({
       where: { prefix: "prefix" },
@@ -70,6 +82,8 @@ describe("TenantContextService", () => {
       appId: "app-id",
       tokenHash: "hash",
       status: "active",
+      scopes: [],
+      lastUsedAt: null,
       revokedAt: new Date(),
       expiresAt: null,
       app: null,
@@ -88,6 +102,8 @@ describe("TenantContextService", () => {
       appId: "app-id",
       tokenHash: "hash",
       status: "active",
+      scopes: [],
+      lastUsedAt: null,
       revokedAt: null,
       expiresAt: null,
       app: {
@@ -105,5 +121,43 @@ describe("TenantContextService", () => {
       service.resolveFromApiToken("bxs_prefix_secret"),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(argon2.verify).not.toHaveBeenCalled();
+  });
+
+  it("rejects expired tokens before hash verification", async () => {
+    prismaMock.apiToken.findUnique.mockResolvedValue({
+      id: "token-id",
+      tenantId: "tenant-id",
+      appId: "app-id",
+      tokenHash: "hash",
+      status: "active",
+      scopes: [],
+      lastUsedAt: null,
+      revokedAt: null,
+      expiresAt: new Date("2020-01-01T00:00:00.000Z"),
+      app: null,
+    });
+
+    await expect(
+      service.resolveFromApiToken("bxs_prefix_secret"),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(argon2.verify).not.toHaveBeenCalled();
+  });
+
+  it("skips lastUsedAt updates when the token was touched recently", () => {
+    service.touchApiToken("token-id", new Date());
+
+    expect(prismaMock.apiToken.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("touches lastUsedAt only when the stored timestamp is stale", () => {
+    service.touchApiToken("token-id", new Date("2020-01-01T00:00:00.000Z"));
+
+    expect(prismaMock.apiToken.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "token-id",
+        OR: [{ lastUsedAt: null }, { lastUsedAt: { lte: expect.any(Date) } }],
+      },
+      data: { lastUsedAt: expect.any(Date) },
+    });
   });
 });

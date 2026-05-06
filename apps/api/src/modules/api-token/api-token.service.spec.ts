@@ -1,4 +1,4 @@
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import * as argon2 from "argon2";
 import { TenantAccessService } from "../common/context/tenant-access.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -100,6 +100,22 @@ describe("ApiTokenService", () => {
         expiresAt: "2020-01-01T00:00:00.000Z",
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prismaMock.apiToken.create).not.toHaveBeenCalled();
+  });
+
+  it("does not create tokens when the user has no access to the app tenant", async () => {
+    tenantAccessMock.getAccessibleApp.mockRejectedValue(
+      new ForbiddenException("Tenant access denied"),
+    );
+
+    await expect(
+      service.create("user-id", {
+        appId: "app-id",
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(prismaMock.apiToken.findUnique).not.toHaveBeenCalled();
+    expect(argon2.hash).not.toHaveBeenCalled();
     expect(prismaMock.apiToken.create).not.toHaveBeenCalled();
   });
 
