@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
 import { JwtAdminGuard } from "../common/guards/jwt-admin.guard";
 import { BillingService } from "./billing.service";
 
@@ -25,6 +25,19 @@ export class BillingController {
   @Post("tenant/:tenantId/suspend")
   async suspendTenant(@Param("tenantId") tenantId: string) {
     return this.billingService.suspendTenantBilling(tenantId);
+  }
+
+  @Post("tenant/:tenantId/reactivate")
+  async reactivateTenant(@Param("tenantId") tenantId: string) {
+    return this.billingService.reactivateTenantBilling(tenantId);
+  }
+
+  @Post("tenant/:tenantId/plan")
+  async changeTenantPlan(
+    @Param("tenantId") tenantId: string,
+    @Body("plan") plan: string,
+  ) {
+    return this.billingService.changeTenantPlan(tenantId, plan);
   }
 
   @Post("invoice/:invoiceId/pay")
