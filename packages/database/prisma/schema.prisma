@@ -75,7 +75,7 @@ model TenantUser {
 model ApiToken {
   id         String    @id @default(uuid())
   tenantId   String
-  appId      String?
+  appId      String
   name       String
   prefix     String
   tokenHash  String
@@ -88,7 +88,7 @@ model ApiToken {
   updatedAt  DateTime  @updatedAt
 
   tenant     Tenant    @relation(fields: [tenantId], references: [id])
-  app        App?      @relation(fields: [appId], references: [id])
+  app        App       @relation(fields: [appId], references: [id])
   apiEvents  ApiEvent[]
 
   @@unique([prefix])
