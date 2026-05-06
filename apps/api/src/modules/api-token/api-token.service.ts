@@ -4,6 +4,7 @@ import {
   Injectable,
   InternalServerErrorException,
 } from "@nestjs/common";
+import type { Prisma } from "@basix-core/database";
 import * as argon2 from "argon2";
 import crypto from "node:crypto";
 import { TenantAccessService } from "../common/context/tenant-access.service";
@@ -44,39 +45,41 @@ export class ApiTokenService {
     const tokenHash = await argon2.hash(rawToken.token);
 
     try {
-      const apiToken = await this.prisma.$transaction(async (tx) => {
-        const createdToken = await tx.apiToken.create({
-          data: {
-            tenantId: app.tenantId,
-            appId: app.id,
-            name: data.name || `${app.name} token`,
-            prefix: rawToken.prefix,
-            tokenHash,
-            scopes: data.scopes ?? [],
-            expiresAt,
-          },
-          select: apiTokenSelect,
-        });
-
-        await tx.auditLog.create({
-          data: {
-            tenantId: createdToken.tenantId,
-            actorUserId: userId,
-            action: "api_token.create",
-            entity: "ApiToken",
-            entityId: createdToken.id,
-            metadata: {
-              appId: createdToken.appId,
-              name: createdToken.name,
-              prefix: createdToken.prefix,
-              scopes: createdToken.scopes,
-              expiresAt: createdToken.expiresAt?.toISOString() ?? null,
+      const apiToken = await this.prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          const createdToken = await tx.apiToken.create({
+            data: {
+              tenantId: app.tenantId,
+              appId: app.id,
+              name: data.name || `${app.name} token`,
+              prefix: rawToken.prefix,
+              tokenHash,
+              scopes: data.scopes ?? [],
+              expiresAt,
             },
-          },
-        });
+            select: apiTokenSelect,
+          });
 
-        return createdToken;
-      });
+          await tx.auditLog.create({
+            data: {
+              tenantId: createdToken.tenantId,
+              actorUserId: userId,
+              action: "api_token.create",
+              entity: "ApiToken",
+              entityId: createdToken.id,
+              metadata: {
+                appId: createdToken.appId,
+                name: createdToken.name,
+                prefix: createdToken.prefix,
+                scopes: createdToken.scopes,
+                expiresAt: createdToken.expiresAt?.toISOString() ?? null,
+              },
+            },
+          });
+
+          return createdToken;
+        },
+      );
 
       return {
         ...apiToken,
@@ -100,7 +103,7 @@ export class ApiTokenService {
       return apiToken;
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const revokedToken = await tx.apiToken.update({
         where: { id: apiToken.id },
         data: {

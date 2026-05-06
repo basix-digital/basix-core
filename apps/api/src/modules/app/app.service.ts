@@ -1,4 +1,5 @@
 import { ConflictException, Injectable } from "@nestjs/common";
+import type { Prisma } from "@basix-core/database";
 import { TenantAccessService } from "../common/context/tenant-access.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateAppDto } from "./dto/create-app.dto";
@@ -29,34 +30,36 @@ export class AppService {
     );
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        const app = await tx.app.create({
-          data: {
-            tenantId: data.tenantId,
-            name: data.name,
-            slug,
-            baseUrl: data.baseUrl,
-          },
-          select: appSelect,
-        });
-
-        await tx.auditLog.create({
-          data: {
-            tenantId: app.tenantId,
-            actorUserId: userId,
-            action: "app.create",
-            entity: "App",
-            entityId: app.id,
-            metadata: {
-              name: app.name,
-              slug: app.slug,
-              baseUrl: app.baseUrl,
+      return await this.prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          const app = await tx.app.create({
+            data: {
+              tenantId: data.tenantId,
+              name: data.name,
+              slug,
+              baseUrl: data.baseUrl,
             },
-          },
-        });
+            select: appSelect,
+          });
 
-        return app;
-      });
+          await tx.auditLog.create({
+            data: {
+              tenantId: app.tenantId,
+              actorUserId: userId,
+              action: "app.create",
+              entity: "App",
+              entityId: app.id,
+              metadata: {
+                name: app.name,
+                slug: app.slug,
+                baseUrl: app.baseUrl,
+              },
+            },
+          });
+
+          return app;
+        },
+      );
     } catch (error) {
       if (this.isUniqueConstraintError(error)) {
         throw new ConflictException("App slug already exists for tenant");

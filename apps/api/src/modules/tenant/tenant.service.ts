@@ -1,4 +1,5 @@
 import { ConflictException, Injectable } from "@nestjs/common";
+import type { Prisma } from "@basix-core/database";
 import { TenantRole } from "../common/constants/tenant-roles";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateTenantDto } from "./dto/create-tenant.dto";
@@ -21,41 +22,43 @@ export class TenantService {
     const slug = await this.createUniqueSlug(data.slug ?? data.name);
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        const tenant = await tx.tenant.create({
-          data: {
-            name: data.name.trim(),
-            slug,
-            plan: data.plan?.trim(),
-          },
-          select: tenantSelect,
-        });
-
-        await tx.tenantUser.create({
-          data: {
-            tenantId: tenant.id,
-            userId,
-            role: TenantRole.OWNER,
-          },
-        });
-
-        await tx.auditLog.create({
-          data: {
-            tenantId: tenant.id,
-            actorUserId: userId,
-            action: "tenant.create",
-            entity: "Tenant",
-            entityId: tenant.id,
-            metadata: {
-              name: tenant.name,
-              slug: tenant.slug,
-              plan: tenant.plan,
+      return await this.prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          const tenant = await tx.tenant.create({
+            data: {
+              name: data.name.trim(),
+              slug,
+              plan: data.plan?.trim(),
             },
-          },
-        });
+            select: tenantSelect,
+          });
 
-        return tenant;
-      });
+          await tx.tenantUser.create({
+            data: {
+              tenantId: tenant.id,
+              userId,
+              role: TenantRole.OWNER,
+            },
+          });
+
+          await tx.auditLog.create({
+            data: {
+              tenantId: tenant.id,
+              actorUserId: userId,
+              action: "tenant.create",
+              entity: "Tenant",
+              entityId: tenant.id,
+              metadata: {
+                name: tenant.name,
+                slug: tenant.slug,
+                plan: tenant.plan,
+              },
+            },
+          });
+
+          return tenant;
+        },
+      );
     } catch (error) {
       if (this.isUniqueConstraintError(error)) {
         throw new ConflictException("Tenant slug already exists");
