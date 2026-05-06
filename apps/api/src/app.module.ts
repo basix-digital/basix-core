@@ -5,6 +5,7 @@ import { ApiTokenModule } from "./modules/api-token/api-token.module";
 import { AppsModule } from "./modules/app/app.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { CommonModule } from "./modules/common/common.module";
+import { EnforcementModule } from "./modules/enforcement/enforcement.module";
 import { ObservabilityModule } from "./modules/observability/observability.module";
 import { PrismaModule } from "./modules/prisma/prisma.module";
 import { TenantModule } from "./modules/tenant/tenant.module";
@@ -23,6 +24,7 @@ import { HealthController } from "./health.controller";
     AppsModule,
     ApiTokenModule,
     ObservabilityModule,
+    EnforcementModule,
   ],
   controllers: [HealthController],
 })
