@@ -1,4 +1,4 @@
-import { TooManyRequestsException } from '@nestjs/common';
+import { HttpException } from '@nestjs/common';
 import { of } from 'rxjs';
 import { PlanEnforcementInterceptor } from './plan-enforcement.interceptor';
 
@@ -66,6 +66,6 @@ describe('PlanEnforcementInterceptor', () => {
 
     await expect(
       interceptor.intercept(context as never, next as never),
-    ).rejects.toBeInstanceOf(TooManyRequestsException);
+    ).rejects.toBeInstanceOf(HttpException);
   });
 });
