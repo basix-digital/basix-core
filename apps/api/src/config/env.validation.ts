@@ -9,6 +9,7 @@ const envSchema = z
     DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
     JWT_ACCESS_SECRET: z.string().min(1, "JWT_ACCESS_SECRET is required"),
     JWT_ACCESS_EXPIRES_IN: z.string().min(1).default("15m"),
+    OBSERVABILITY_HASH_SECRET: z.string().min(1).optional(),
     API_TOKEN_LAST_USED_TOUCH_INTERVAL_MS: z.coerce
       .number()
       .int()
