@@ -189,7 +189,8 @@ export function UsageDashboardPage() {
                 <div className="rounded-md border border-border bg-background/40 p-4">
                   <p className="text-xs text-muted-foreground">Limit</p>
                   <p className="mt-2 text-lg font-semibold text-foreground">
-                    {metrics.data.plan.monthlyRequestLimit
+                    {metrics.data.plan.monthlyRequestLimit !== null &&
+                    metrics.data.plan.monthlyRequestLimit !== undefined
                       ? formatCompactNumber(
                           metrics.data.plan.monthlyRequestLimit,
                         )
@@ -199,7 +200,8 @@ export function UsageDashboardPage() {
                 <div className="rounded-md border border-border bg-background/40 p-4">
                   <p className="text-xs text-muted-foreground">Remaining</p>
                   <p className="mt-2 text-lg font-semibold text-foreground">
-                    {metrics.data.plan.remainingRequests
+                    {metrics.data.plan.remainingRequests !== null &&
+                    metrics.data.plan.remainingRequests !== undefined
                       ? formatCompactNumber(metrics.data.plan.remainingRequests)
                       : "Custom"}
                   </p>

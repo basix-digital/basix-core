@@ -10,8 +10,8 @@ import type {
   Tenant,
   TenantMetrics,
   TenantRow,
-  UsageTrendPoint,
 } from "./types";
+import { mergeUsageTrends } from "./usage-trends";
 
 export async function listTenants() {
   return backendFetch<Tenant[]>("/admin/tenants");
@@ -187,32 +187,6 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     tenants: tenantRows,
     billing,
   };
-}
-
-function mergeUsageTrends(points: UsageTrendPoint[]) {
-  const byDate = new Map<string, UsageTrendPoint>();
-
-  for (const point of points) {
-    const existing = byDate.get(point.date) ?? {
-      date: point.date,
-      requestCount: 0,
-      errorCount: 0,
-      averageLatencyMs: 0,
-    };
-
-    byDate.set(point.date, {
-      date: point.date,
-      requestCount: existing.requestCount + point.requestCount,
-      errorCount: existing.errorCount + point.errorCount,
-      averageLatencyMs: Math.round(
-        (existing.averageLatencyMs + point.averageLatencyMs) / 2,
-      ),
-    });
-  }
-
-  return Array.from(byDate.values()).sort((a, b) =>
-    a.date.localeCompare(b.date),
-  );
 }
 
 function groupBillingEvents(events: BillingEvent[]) {
