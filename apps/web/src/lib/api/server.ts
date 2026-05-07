@@ -87,21 +87,23 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const accessToken = cookieStore.get(ACCESS_COOKIE)?.value;
   const refreshToken = cookieStore.get(REFRESH_COOKIE)?.value;
 
-  if (user && (isAccessTokenUsable(accessToken) || refreshToken)) {
-    return user;
-  }
-
-  return null;
-}
-
-export async function refreshSession() {
-  const cookieStore = await cookies();
-  const sessionValue = cookieStore.get(REFRESH_COOKIE)?.value;
-
-  if (!sessionValue) {
+  if (!user) {
     return null;
   }
 
+  if (isAccessTokenUsable(accessToken)) {
+    return user;
+  }
+
+  if (!refreshToken) {
+    return null;
+  }
+
+  const refreshedAuth = await refreshAuthSession(refreshToken);
+  return refreshedAuth?.user ?? null;
+}
+
+async function refreshAuthSession(sessionValue: string) {
   const response = await fetch(`${config.apiBaseUrl}/admin/auth/refresh`, {
     method: "POST",
     headers: {
@@ -119,7 +121,19 @@ export async function refreshSession() {
 
   const auth = (await response.json()) as AuthResponse;
   await setSession(auth);
-  return auth.accessToken;
+  return auth;
+}
+
+export async function refreshSession() {
+  const cookieStore = await cookies();
+  const sessionValue = cookieStore.get(REFRESH_COOKIE)?.value;
+
+  if (!sessionValue) {
+    return null;
+  }
+
+  const auth = await refreshAuthSession(sessionValue);
+  return auth?.accessToken ?? null;
 }
 
 export async function backendFetch<T>(

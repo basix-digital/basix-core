@@ -69,7 +69,7 @@ export function isAccessTokenUsable(
 
   const payload = parseJwtPayload(token);
   if (!payload?.exp) {
-    return true;
+    return false;
   }
 
   return payload.exp > Math.floor(Date.now() / 1000) + leewaySeconds;
