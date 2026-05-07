@@ -48,10 +48,20 @@ export class AuthService {
       .catch(() => false);
     if (!valid) throw new UnauthorizedException("Invalid session");
 
-    await this.prisma.refreshSession.update({
-      where: { id: session.id },
-      data: { revokedAt: new Date(), rotatedAt: new Date() },
+    const rotatedAt = new Date();
+    const revokedSession = await this.prisma.refreshSession.updateMany({
+      where: {
+        id: session.id,
+        revokedAt: null,
+        expiresAt: {
+          gt: rotatedAt,
+        },
+      },
+      data: { revokedAt: rotatedAt, rotatedAt },
     });
+    if (revokedSession.count !== 1) {
+      throw new UnauthorizedException("Invalid session");
+    }
 
     const user = await this.prisma.user.findUnique({
       where: { id: session.userId },

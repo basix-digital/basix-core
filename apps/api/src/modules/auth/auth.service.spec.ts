@@ -19,6 +19,7 @@ describe("AuthService", () => {
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
   };
 
@@ -93,6 +94,7 @@ describe("AuthService", () => {
     });
     jest.mocked(argon2.verify).mockResolvedValue(true);
     jest.mocked(argon2.hash).mockResolvedValue("new-session-hash");
+    prismaMock.refreshSession.updateMany.mockResolvedValue({ count: 1 });
     jwtServiceMock.signAsync.mockResolvedValue("new-access-token");
 
     const result = await service.refreshSession(sessionValue);
@@ -102,14 +104,52 @@ describe("AuthService", () => {
       where: { tokenId },
     });
     expect(argon2.verify).toHaveBeenCalledWith("stored-session-hash", secret);
-    expect(prismaMock.refreshSession.update).toHaveBeenCalledWith({
-      where: { id: "session-id" },
+    expect(prismaMock.refreshSession.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "session-id",
+        revokedAt: null,
+        expiresAt: { gt: expect.any(Date) },
+      },
       data: {
         revokedAt: expect.any(Date),
         rotatedAt: expect.any(Date),
       },
     });
     expect(result.accessToken).toBe("new-access-token");
+  });
+
+  it("rejects refresh replay when another request already revoked the session", async () => {
+    const tokenId = "a".repeat(32);
+    const secret = "b".repeat(96);
+    const sessionValue = `${tokenId}.${secret}`;
+    prismaMock.refreshSession.findUnique.mockResolvedValue({
+      id: "session-id",
+      userId: "user-id",
+      tokenHash: "stored-session-hash",
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    jest.mocked(argon2.verify).mockResolvedValue(true);
+    prismaMock.refreshSession.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(service.refreshSession(sessionValue)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+
+    expect(prismaMock.refreshSession.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "session-id",
+        revokedAt: null,
+        expiresAt: { gt: expect.any(Date) },
+      },
+      data: {
+        revokedAt: expect.any(Date),
+        rotatedAt: expect.any(Date),
+      },
+    });
+    expect(prismaMock.user.findUnique).not.toHaveBeenCalled();
+    expect(prismaMock.refreshSession.create).not.toHaveBeenCalled();
+    expect(jwtServiceMock.signAsync).not.toHaveBeenCalled();
   });
 
   it("rejects malformed refresh values before any database lookup", async () => {
