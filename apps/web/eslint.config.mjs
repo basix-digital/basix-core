@@ -9,11 +9,22 @@ export default tseslint.config(
       "node_modules/**",
       "next-env.d.ts",
       "coverage/**",
-      "dist/**"
+      "dist/**",
     ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    files: ["jest.config.js"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
   {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
@@ -30,9 +41,15 @@ export default tseslint.config(
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern: "^_",
-          caughtErrorsIgnorePattern: "^_"
-        }
-      ]
-    }
-  }
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/**/*.spec.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
 );
