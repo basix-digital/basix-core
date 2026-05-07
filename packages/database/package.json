@@ -9,7 +9,8 @@
     "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
     "db:migrate": "dotenv -e ../../.env -- prisma migrate dev",
     "db:generate": "dotenv -e ../../.env -- prisma generate",
-    "db:deploy": "dotenv -e ../../.env -- prisma migrate deploy"
+    "db:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
+    "test": "pnpm db:generate && tsc -p tsconfig.test.json && node --test \".test-build/**/*.spec.js\""
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",
