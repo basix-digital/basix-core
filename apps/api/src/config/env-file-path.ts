@@ -1,3 +1,10 @@
-import { join } from "node:path";
+import { resolve } from "node:path";
 
-export const rootEnvFilePath = join(__dirname, "../../..", ".env");
+const unique = (paths: string[]) => Array.from(new Set(paths));
+
+export const apiEnvFilePaths = unique([
+  resolve(__dirname, "../../../..", ".env"),
+  resolve(process.cwd(), "../../.env"),
+  resolve(process.cwd(), ".env"),
+  resolve(__dirname, "../..", ".env"),
+]);
