@@ -65,6 +65,7 @@ docker-data/
 # Tests
 # =========================
 coverage/
+.test-build/
 .nyc_output/
 
 # =========================

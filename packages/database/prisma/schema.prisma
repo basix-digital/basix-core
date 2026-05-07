@@ -103,6 +103,7 @@ model ApiToken {
 model RefreshSession {
   id           String    @id @default(uuid())
   userId       String
+  tokenId      String?   @unique
   tokenHash    String
   userAgent    String?
   ipHash       String?
@@ -115,6 +116,7 @@ model RefreshSession {
 
   @@index([userId])
   @@index([expiresAt])
+  @@index([tokenId, expiresAt])
 }
 
 model ApiEvent {
