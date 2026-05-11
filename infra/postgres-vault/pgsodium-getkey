@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+key_file="${PGSODIUM_KEY_FILE:-/var/lib/postgresql/pgsodium/pgsodium.key}"
+key_dir="$(dirname "$key_file")"
+
+mkdir -p "$key_dir"
+chmod 0700 "$key_dir"
+
+if [ ! -f "$key_file" ]; then
+  umask 077
+  openssl rand -hex 32 > "$key_file"
+fi
+
+cat "$key_file"

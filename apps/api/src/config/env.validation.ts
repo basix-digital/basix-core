@@ -10,6 +10,10 @@ const envSchema = z
     JWT_ACCESS_SECRET: z.string().min(1, "JWT_ACCESS_SECRET is required"),
     JWT_ACCESS_EXPIRES_IN: z.string().min(1).default("15m"),
     OBSERVABILITY_HASH_SECRET: z.string().min(1).optional(),
+    VAULT_DATABASE_URL: z.string().min(1).optional(),
+    PROVIDER_CREDENTIALS_FALLBACK_ENV: z
+      .enum(["true", "false"])
+      .default("false"),
     API_TOKEN_LAST_USED_TOUCH_INTERVAL_MS: z.coerce
       .number()
       .int()

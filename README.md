@@ -70,3 +70,46 @@ Basix Core should start as a modular monolith and only evolve into services when
 ## Security principle
 
 Security is not an afterthought in this project. Every module must enforce tenant isolation, least privilege, secure token handling, auditability, and safe defaults.
+
+## Local Vault database
+
+The provider credentials Vault runs as a separate Postgres service with
+`pgsodium` and `supabase_vault` installed in a custom image.
+
+Build and start only the Vault database:
+
+```bash
+pnpm docker:vault:build
+pnpm docker:vault:up
+```
+
+Check that the extensions were initialized:
+
+```bash
+pnpm docker:vault:smoke
+```
+
+Open a psql shell:
+
+```bash
+pnpm docker:vault:psql
+```
+
+Manual smoke test inside the psql shell:
+
+```sql
+SELECT vault.create_secret('local-test-secret', 'local_test_secret', 'local smoke test');
+SELECT id, name, decrypted_secret
+FROM vault.decrypted_secrets
+WHERE name = 'local_test_secret';
+```
+
+The Vault connection string for local development is:
+
+```txt
+VAULT_DATABASE_URL="postgresql://basix_vault_app:basix_vault_app@localhost:5433/basix_vault"
+```
+
+The pgsodium root key is persisted in the `vault_pgsodium_keys` Docker volume.
+Do not commit generated key files or copy production Vault keys into local
+development.

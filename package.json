@@ -13,8 +13,14 @@
     "commitlint": "commitlint --edit",
     "db:generate": "pnpm --filter @basix-core/database db:generate",
     "db:migrate": "pnpm --filter @basix-core/database db:migrate",
+    "db:reset": "pnpm --filter @basix-core/database db:reset",
     "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down"
+    "docker:down": "docker compose down",
+    "docker:vault:build": "docker compose build vault-postgres",
+    "docker:vault:up": "docker compose up -d vault-postgres",
+    "docker:vault:logs": "docker compose logs -f vault-postgres",
+    "docker:vault:psql": "docker compose exec vault-postgres psql -U postgres -d basix_vault",
+    "docker:vault:smoke": "docker compose exec vault-postgres psql -U postgres -d basix_vault -c \"SELECT extname FROM pg_extension WHERE extname IN ('pgsodium', 'supabase_vault');\""
   },
   "lint-staged": {
     "*.{ts,tsx,js,json,md,yml,yaml}": [
