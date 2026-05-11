@@ -81,7 +81,9 @@ export async function clearSession() {
   cookieStore.delete(USER_COOKIE);
 }
 
-export async function getSessionUser(): Promise<SessionUser | null> {
+export async function getSessionUser(
+  options: { refresh?: boolean } = {},
+): Promise<SessionUser | null> {
   const cookieStore = await cookies();
   const user = parseUserCookie(cookieStore.get(USER_COOKIE)?.value);
   const accessToken = cookieStore.get(ACCESS_COOKIE)?.value;
@@ -93,6 +95,10 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   if (isAccessTokenUsable(accessToken)) {
     return user;
+  }
+
+  if (!options.refresh) {
+    return null;
   }
 
   if (!refreshToken) {
@@ -143,18 +149,8 @@ export async function backendFetch<T>(
   const cookieStore = await cookies();
   const query = init.query ? buildQuery(init.query) : "";
   const accessToken = cookieStore.get(ACCESS_COOKIE)?.value;
-  const token = isAccessTokenUsable(accessToken)
-    ? accessToken
-    : await refreshSession();
+  const token = isAccessTokenUsable(accessToken) ? accessToken : null;
   const response = await callBackend(path, query, init, token);
-
-  if (response.status === 401) {
-    const refreshedToken = await refreshSession();
-    if (refreshedToken) {
-      const retry = await callBackend(path, query, init, refreshedToken);
-      return parseBackendResponse<T>(retry);
-    }
-  }
 
   return parseBackendResponse<T>(response);
 }
