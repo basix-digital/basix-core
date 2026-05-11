@@ -16,15 +16,34 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  apps          App[]
-  users         TenantUser[]
-  tokens        ApiToken[]
-  apiEvents     ApiEvent[]
-  metrics       UsageMetric[]
-  auditLogs     AuditLog[]
-  subscriptions Subscription[]
-  invoices      Invoice[]
-  billingEvents BillingEvent[]
+  apps                       App[]
+  users                      TenantUser[]
+  tokens                     ApiToken[]
+  apiEvents                  ApiEvent[]
+  metrics                    UsageMetric[]
+  auditLogs                  AuditLog[]
+  subscriptions              Subscription[]
+  invoices                   Invoice[]
+  billingEvents              BillingEvent[]
+  providerCredentials        ProviderCredential[]
+  aiChannels                 AiChannel[]
+  aiConversations            AiConversation[]
+  aiMessageQueue             AiMessageQueue[]
+  aiManualMessages           AiManualMessage[]
+  aiMessageMedia             AiMessageMedia[]
+  aiLeadContexts             AiLeadContext[]
+  aiAgentLlmSettings         AiAgentLlmSetting[]
+  aiPlaybooks                AiPlaybook[]
+  aiPlaybookVersions         AiPlaybookVersion[]
+  aiAgentPlaybookAssignments AiAgentPlaybookAssignment[]
+  aiPlaybookUsageEvents      AiPlaybookUsageEvent[]
+  aiMessageTemplates         AiMessageTemplate[]
+  aiCampaigns                AiCampaign[]
+  aiCampaignRecipients       AiCampaignRecipient[]
+  crmContacts                CrmContact[]
+  crmPipelines               CrmPipeline[]
+  crmStages                  CrmStage[]
+  crmActivities              CrmActivity[]
 }
 
 model App {
@@ -37,7 +56,7 @@ model App {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
   tokens    ApiToken[]
   apiEvents ApiEvent[]
 
@@ -46,18 +65,19 @@ model App {
 }
 
 model User {
-  id           String    @id @default(uuid())
+  id           String   @id @default(uuid())
   name         String?
-  email        String    @unique
+  email        String   @unique
   passwordHash String
-  status       String    @default("active")
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  status       String   @default("active")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  tenants         TenantUser[]
-  refreshSessions RefreshSession[]
-  auditLogs       AuditLog[]
-  billingEvents   BillingEvent[]
+  tenants             TenantUser[]
+  refreshSessions     RefreshSession[]
+  auditLogs           AuditLog[]
+  billingEvents       BillingEvent[]
+  assignedCrmContacts CrmContact[]     @relation("CrmContactAssignee")
 }
 
 model TenantUser {
@@ -68,8 +88,8 @@ model TenantUser {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
 
   @@unique([tenantId, userId])
   @@index([tenantId])
@@ -91,9 +111,9 @@ model ApiToken {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  tenant     Tenant    @relation(fields: [tenantId], references: [id])
-  app        App       @relation(fields: [appId], references: [id])
-  apiEvents  ApiEvent[]
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  app       App        @relation(fields: [appId], references: [id])
+  apiEvents ApiEvent[]
 
   @@unique([prefix])
   @@index([tenantId])
@@ -101,18 +121,18 @@ model ApiToken {
 }
 
 model RefreshSession {
-  id           String    @id @default(uuid())
-  userId       String
-  tokenId      String?   @unique
-  tokenHash    String
-  userAgent    String?
-  ipHash       String?
-  expiresAt    DateTime
-  revokedAt    DateTime?
-  createdAt    DateTime  @default(now())
-  rotatedAt    DateTime?
+  id        String    @id @default(uuid())
+  userId    String
+  tokenId   String?   @unique
+  tokenHash String
+  userAgent String?
+  ipHash    String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  rotatedAt DateTime?
 
-  user         User      @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([expiresAt])
@@ -133,9 +153,9 @@ model ApiEvent {
   userAgent  String?
   createdAt  DateTime @default(now())
 
-  tenant     Tenant?  @relation(fields: [tenantId], references: [id])
-  app        App?     @relation(fields: [appId], references: [id])
-  token      ApiToken? @relation(fields: [tokenId], references: [id])
+  tenant Tenant?   @relation(fields: [tenantId], references: [id])
+  app    App?      @relation(fields: [appId], references: [id])
+  token  ApiToken? @relation(fields: [tokenId], references: [id])
 
   @@index([tenantId, createdAt])
   @@index([appId, createdAt])
@@ -143,39 +163,39 @@ model ApiEvent {
 }
 
 model UsageMetric {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   tenantId    String
   metricName  String
   metricValue Decimal
   source      String?
   periodStart DateTime?
   metadata    Json?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 
-  @@index([tenantId, metricName, createdAt])
   @@unique([tenantId, metricName, source, periodStart])
+  @@index([tenantId, metricName, createdAt])
 }
 
 model Subscription {
-  id                 String   @id @default(uuid())
+  id                 String    @id @default(uuid())
   tenantId           String
   plan               String
-  status             String   @default("trialing")
-  billingCycle       String   @default("monthly")
+  status             String    @default("trialing")
+  billingCycle       String    @default("monthly")
   currentPeriodStart DateTime
   currentPeriodEnd   DateTime
   trialEndsAt        DateTime?
   graceEndsAt        DateTime?
   canceledAt         DateTime?
   suspendedAt        DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  tenant             Tenant   @relation(fields: [tenantId], references: [id])
-  invoices           Invoice[]
-  billingEvents      BillingEvent[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  invoices      Invoice[]
+  billingEvents BillingEvent[]
 
   @@index([tenantId])
   @@index([status])
@@ -183,22 +203,22 @@ model Subscription {
 }
 
 model Invoice {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   tenantId       String
   subscriptionId String?
-  status         String   @default("draft")
+  status         String    @default("draft")
   amountCents    Int
-  currency       String   @default("BRL")
+  currency       String    @default("BRL")
   dueAt          DateTime
   paidAt         DateTime?
   externalRef    String?
   metadata       Json?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  tenant         Tenant   @relation(fields: [tenantId], references: [id])
-  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
-  billingEvents  BillingEvent[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  subscription  Subscription?  @relation(fields: [subscriptionId], references: [id])
+  billingEvents BillingEvent[]
 
   @@index([tenantId, status])
   @@index([subscriptionId])
@@ -215,10 +235,10 @@ model BillingEvent {
   metadata       Json?
   createdAt      DateTime @default(now())
 
-  tenant         Tenant   @relation(fields: [tenantId], references: [id])
-  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
-  invoice        Invoice? @relation(fields: [invoiceId], references: [id])
-  actorUser      User? @relation(fields: [actorUserId], references: [id])
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+  invoice      Invoice?      @relation(fields: [invoiceId], references: [id])
+  actorUser    User?         @relation(fields: [actorUserId], references: [id])
 
   @@index([tenantId, createdAt])
   @@index([subscriptionId])
@@ -236,10 +256,547 @@ model AuditLog {
   metadata    Json?
   createdAt   DateTime @default(now())
 
-  tenant      Tenant?  @relation(fields: [tenantId], references: [id])
-  actorUser   User?    @relation(fields: [actorUserId], references: [id])
+  tenant    Tenant? @relation(fields: [tenantId], references: [id])
+  actorUser User?   @relation(fields: [actorUserId], references: [id])
 
   @@index([tenantId, createdAt])
   @@index([actorUserId, createdAt])
   @@index([entity, entityId])
+}
+
+model ProviderCredential {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  provider      String
+  scopeType     String    @map("scope_type")
+  scopeId       String?   @map("scope_id")
+  key           String
+  vaultSecretId String    @map("vault_secret_id")
+  status        String    @default("active")
+  metadata      Json?
+  createdBy     String?   @map("created_by")
+  rotatedAt     DateTime? @map("rotated_at")
+  revokedAt     DateTime? @map("revoked_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, provider, key, status])
+  @@index([tenantId, provider, scopeType, scopeId, status])
+  @@map("provider_credentials")
+}
+
+model AiChannel {
+  id                 String   @id @default(uuid())
+  tenantId           String   @map("tenant_id")
+  displayName        String   @map("display_name")
+  phoneNumber        String   @unique @map("phone_number")
+  agentIdDefault     String   @map("agent_id_default")
+  provider           String   @default("twilio")
+  status             String   @default("active")
+  encryptedSecrets   Json?    @map("encrypted_secrets")
+  rateLimitPerMinute Int?     @map("rate_limit_per_minute")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  tenant         Tenant            @relation(fields: [tenantId], references: [id])
+  conversations  AiConversation[]
+  messageQueue   AiMessageQueue[]
+  manualMessages AiManualMessage[]
+  media          AiMessageMedia[]
+  leadContexts   AiLeadContext[]
+  crmActivities  CrmActivity[]
+  campaignRecipients AiCampaignRecipient[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("ai_channels")
+}
+
+model AiConversation {
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  channelId         String    @map("channel_id")
+  crmContactId      String?   @map("crm_contact_id")
+  phoneNumber       String    @map("phone_number")
+  agentId           String    @map("agent_id")
+  threadId          String    @map("thread_id")
+  mode              String    @default("ai")
+  lastMessage       String    @default("") @map("last_message")
+  lastMessageAt     DateTime  @default(now()) @map("last_message_at")
+  messageCount      Int       @default(0) @map("message_count")
+  takenOverByUserId String?   @map("taken_over_by_user_id")
+  takenOverAt       DateTime? @map("taken_over_at")
+  releasedAt        DateTime? @map("released_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  tenant         Tenant            @relation(fields: [tenantId], references: [id])
+  channel        AiChannel         @relation(fields: [channelId], references: [id])
+  crmContact     CrmContact?       @relation(fields: [crmContactId], references: [id])
+  messageQueue   AiMessageQueue[]
+  manualMessages AiManualMessage[]
+  media          AiMessageMedia[]
+
+  @@unique([tenantId, channelId, phoneNumber])
+  @@index([tenantId, lastMessageAt])
+  @@index([tenantId, mode])
+  @@map("ai_conversations")
+}
+
+model AiMessageQueue {
+  id                    String    @id @default(uuid())
+  tenantId              String    @map("tenant_id")
+  channelId             String    @map("channel_id")
+  conversationId        String?   @map("conversation_id")
+  crmContactId          String?   @map("crm_contact_id")
+  messageId             String?   @map("message_id")
+  phoneNumber           String    @map("phone_number")
+  toNumber              String?   @map("to_number")
+  agentId               String    @map("agent_id")
+  threadId              String    @map("thread_id")
+  incomingMessage       String    @map("incoming_message")
+  mediaUrl              String?   @map("media_url")
+  mediaType             String?   @map("media_type")
+  normalizedInput       String?   @map("normalized_input")
+  mediaProcessingStatus String    @default("none") @map("media_processing_status")
+  mediaProcessingError  String?   @map("media_processing_error")
+  status                String    @default("queued")
+  processAfter          DateTime  @default(now()) @map("process_after")
+  attempts              Int       @default(0)
+  maxAttempts           Int       @default(3) @map("max_attempts")
+  leaseUntil            DateTime? @map("lease_until")
+  response              String?
+  error                 String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  processedAt           DateTime? @map("processed_at")
+
+  tenant       Tenant                 @relation(fields: [tenantId], references: [id])
+  channel      AiChannel              @relation(fields: [channelId], references: [id])
+  conversation AiConversation?        @relation(fields: [conversationId], references: [id])
+  crmContact   CrmContact?            @relation(fields: [crmContactId], references: [id])
+  media        AiMessageMedia[]
+  usageEvents  AiPlaybookUsageEvent[]
+
+  @@unique([tenantId, messageId])
+  @@index([tenantId, status, processAfter, createdAt])
+  @@index([tenantId, phoneNumber, channelId])
+  @@index([tenantId, createdAt])
+  @@map("ai_message_queue")
+}
+
+model AiManualMessage {
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  channelId         String    @map("channel_id")
+  conversationId    String?   @map("conversation_id")
+  crmContactId      String?   @map("crm_contact_id")
+  phoneNumber       String    @map("phone_number")
+  agentId           String    @map("agent_id")
+  senderUserId      String?   @map("sender_user_id")
+  body              String
+  providerTemplateId String?  @map("provider_template_id")
+  providerVariables Json?     @map("provider_variables")
+  providerMessageId String?   @map("provider_message_id")
+  deliveryStatus    String    @default("queued") @map("delivery_status")
+  deliveryError     String?   @map("delivery_error")
+  attempts          Int       @default(0)
+  maxAttempts       Int       @default(3) @map("max_attempts")
+  leaseUntil        DateTime? @map("lease_until")
+  sentAt            DateTime? @map("sent_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  tenant       Tenant           @relation(fields: [tenantId], references: [id])
+  channel      AiChannel        @relation(fields: [channelId], references: [id])
+  conversation AiConversation?  @relation(fields: [conversationId], references: [id])
+  crmContact   CrmContact?      @relation(fields: [crmContactId], references: [id])
+  media        AiMessageMedia[]
+  campaignRecipients AiCampaignRecipient[]
+
+  @@index([tenantId, phoneNumber, channelId, createdAt])
+  @@index([deliveryStatus, createdAt])
+  @@map("ai_manual_messages")
+}
+
+model AiMessageMedia {
+  id              String   @id @default(uuid())
+  tenantId        String   @map("tenant_id")
+  channelId       String   @map("channel_id")
+  conversationId  String?  @map("conversation_id")
+  messageQueueId  String?  @map("message_queue_id")
+  manualMessageId String?  @map("manual_message_id")
+  phoneNumber     String   @map("phone_number")
+  bucketKey       String   @unique @map("bucket_key")
+  mimeType        String   @map("mime_type")
+  sizeBytes       BigInt   @default(0) @map("size_bytes")
+  direction       String
+  kind            String
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  tenant        Tenant           @relation(fields: [tenantId], references: [id])
+  channel       AiChannel        @relation(fields: [channelId], references: [id])
+  conversation  AiConversation?  @relation(fields: [conversationId], references: [id])
+  messageQueue  AiMessageQueue?  @relation(fields: [messageQueueId], references: [id])
+  manualMessage AiManualMessage? @relation(fields: [manualMessageId], references: [id])
+
+  @@index([tenantId, phoneNumber, channelId, createdAt])
+  @@map("ai_message_media")
+}
+
+model AiLeadContext {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  channelId   String   @map("channel_id")
+  phoneNumber String   @map("phone_number")
+  agentId     String   @map("agent_id")
+  externalId  String?  @map("external_id")
+  name        String?
+  email       String?
+  company     String?
+  score       Int      @default(0)
+  profile     String   @default("unknown")
+  mainLeak    String?  @map("main_leak")
+  answersJson Json     @default("[]") @map("answers_json")
+  source      String   @default("whatsapp")
+  receivedAt  DateTime @default(now()) @map("received_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant    @relation(fields: [tenantId], references: [id])
+  channel AiChannel @relation(fields: [channelId], references: [id])
+
+  @@unique([tenantId, channelId, phoneNumber, agentId])
+  @@index([tenantId, phoneNumber, agentId])
+  @@index([tenantId, updatedAt])
+  @@map("ai_lead_contexts")
+}
+
+model AiAgentLlmSetting {
+  id           String   @id @default(uuid())
+  tenantId     String   @map("tenant_id")
+  agentId      String   @map("agent_id")
+  provider     String   @default("openrouter")
+  model        String?
+  systemPrompt String   @map("system_prompt")
+  temperature  Float?
+  topP         Float?   @map("top_p")
+  topK         Int?     @map("top_k")
+  createdBy    String?  @map("created_by")
+  updatedBy    String?  @map("updated_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, agentId])
+  @@index([tenantId, updatedAt])
+  @@map("ai_agent_llm_settings")
+}
+
+model AiPlaybook {
+  id               String    @id @default(uuid())
+  tenantId         String    @map("tenant_id")
+  title            String
+  type             String
+  category         String
+  status           String    @default("draft")
+  currentVersionId String?   @map("current_version_id")
+  isGlobalTemplate Boolean   @default(false) @map("is_global_template")
+  createdBy        String    @map("created_by")
+  reviewedBy       String?   @map("reviewed_by")
+  approvedAt       DateTime? @map("approved_at")
+  performanceScore Float     @default(0) @map("performance_score")
+  usageCount       Int       @default(0) @map("usage_count")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  tenant      Tenant                      @relation(fields: [tenantId], references: [id])
+  versions    AiPlaybookVersion[]
+  assignments AiAgentPlaybookAssignment[]
+  usageEvents AiPlaybookUsageEvent[]
+
+  @@index([tenantId, status, type, category])
+  @@index([tenantId, isGlobalTemplate])
+  @@map("ai_playbooks")
+}
+
+model AiPlaybookVersion {
+  id               String                       @id @default(uuid())
+  tenantId         String                       @map("tenant_id")
+  playbookId       String                       @map("playbook_id")
+  version          Int
+  parentVersion    Int?                         @map("parent_version")
+  type             String
+  category         String
+  stage            String
+  title            String
+  triggerPhrases   String[]                     @default([]) @map("trigger_phrases")
+  situation        String
+  responseStrategy String                       @map("response_strategy")
+  exampleResponse  String                       @map("example_response")
+  rationale        String
+  nextStep         String                       @map("next_step")
+  priority         Int                          @default(5)
+  tags             String[]                     @default([])
+  minScore         Float                        @default(0) @map("min_score")
+  status           String                       @default("draft")
+  createdBy        String                       @map("created_by")
+  reviewedBy       String?                      @map("reviewed_by")
+  approvedAt       DateTime?                    @map("approved_at")
+  performanceScore Float                        @default(0) @map("performance_score")
+  usageCount       Int                          @default(0) @map("usage_count")
+  positiveExamples Json                         @default("[]") @map("positive_examples")
+  negativeExamples Json                         @default("[]") @map("negative_examples")
+  searchText       String                       @default("") @map("search_text")
+  embedding        Unsupported("vector(1536)")?
+  createdAt        DateTime                     @default(now()) @map("created_at")
+  updatedAt        DateTime                     @updatedAt @map("updated_at")
+
+  tenant      Tenant                      @relation(fields: [tenantId], references: [id])
+  playbook    AiPlaybook                  @relation(fields: [playbookId], references: [id])
+  assignments AiAgentPlaybookAssignment[]
+  usageEvents AiPlaybookUsageEvent[]
+
+  @@unique([tenantId, playbookId, version])
+  @@index([tenantId, playbookId, status, version])
+  @@map("ai_playbook_versions")
+}
+
+model AiAgentPlaybookAssignment {
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  agentId           String    @map("agent_id")
+  playbookId        String    @map("playbook_id")
+  playbookVersionId String    @map("playbook_version_id")
+  isEnabled         Boolean   @default(true) @map("is_enabled")
+  isActive          Boolean   @default(false) @map("is_active")
+  priorityOverride  Int?      @map("priority_override")
+  minScoreOverride  Float?    @map("min_score_override")
+  activatedBy       String?   @map("activated_by")
+  activatedAt       DateTime? @map("activated_at")
+  disabledAt        DateTime? @map("disabled_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  tenant          Tenant            @relation(fields: [tenantId], references: [id])
+  playbook        AiPlaybook        @relation(fields: [playbookId], references: [id])
+  playbookVersion AiPlaybookVersion @relation(fields: [playbookVersionId], references: [id])
+
+  @@unique([tenantId, agentId, playbookId, playbookVersionId])
+  @@index([tenantId, agentId, isEnabled, isActive])
+  @@map("ai_agent_playbook_assignments")
+}
+
+model AiPlaybookUsageEvent {
+  id                String   @id @default(uuid())
+  tenantId          String   @map("tenant_id")
+  playbookId        String?  @map("playbook_id")
+  playbookVersionId String?  @map("playbook_version_id")
+  agentId           String   @map("agent_id")
+  messageQueueId    String?  @map("message_queue_id")
+  phoneNumber       String   @map("phone_number")
+  leadMessage       String   @map("lead_message")
+  classification    Json     @default("{}")
+  retrievedExamples Json     @default("[]") @map("retrieved_examples")
+  responseText      String?  @map("response_text")
+  stage             String?
+  outcome           String?
+  converted         Boolean?
+  manualRating      Int?     @map("manual_rating")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  tenant          Tenant             @relation(fields: [tenantId], references: [id])
+  playbook        AiPlaybook?        @relation(fields: [playbookId], references: [id])
+  playbookVersion AiPlaybookVersion? @relation(fields: [playbookVersionId], references: [id])
+  messageQueue    AiMessageQueue?    @relation(fields: [messageQueueId], references: [id])
+
+  @@index([tenantId, agentId, createdAt])
+  @@index([tenantId, playbookId, createdAt])
+  @@map("ai_playbook_usage_events")
+}
+
+model AiMessageTemplate {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  name        String
+  channelType String   @map("channel_type")
+  provider    String
+  providerTemplateId String? @map("provider_template_id")
+  subject     String?
+  body        String
+  variables   String[] @default([])
+  status      String   @default("active")
+  createdBy   String   @map("created_by")
+  updatedBy   String?  @map("updated_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant       @relation(fields: [tenantId], references: [id])
+  campaigns AiCampaign[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, channelType, status])
+  @@map("ai_message_templates")
+}
+
+model AiCampaign {
+  id             String    @id @default(uuid())
+  tenantId       String    @map("tenant_id")
+  templateId     String    @map("template_id")
+  name           String
+  channelType    String    @map("channel_type")
+  status         String    @default("draft")
+  audienceFilter Json?     @map("audience_filter")
+  scheduledAt    DateTime? @map("scheduled_at")
+  sentAt         DateTime? @map("sent_at")
+  createdBy      String    @map("created_by")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  tenant     Tenant                @relation(fields: [tenantId], references: [id])
+  template   AiMessageTemplate     @relation(fields: [templateId], references: [id])
+  recipients AiCampaignRecipient[]
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, channelType, createdAt])
+  @@map("ai_campaigns")
+}
+
+model AiCampaignRecipient {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  campaignId      String    @map("campaign_id")
+  contactId       String?   @map("contact_id")
+  channelId       String?   @map("channel_id")
+  manualMessageId String?   @map("manual_message_id")
+  phoneNumber     String?   @map("phone_number")
+  email           String?
+  status          String    @default("queued")
+  providerVariables Json?   @map("provider_variables")
+  providerMessageId String? @map("provider_message_id")
+  renderedSubject String?   @map("rendered_subject")
+  renderedBody    String    @map("rendered_body")
+  error           String?
+  queuedAt        DateTime? @default(now()) @map("queued_at")
+  sentAt          DateTime? @map("sent_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  tenant        Tenant           @relation(fields: [tenantId], references: [id])
+  campaign      AiCampaign       @relation(fields: [campaignId], references: [id])
+  contact       CrmContact?      @relation(fields: [contactId], references: [id])
+  channel       AiChannel?       @relation(fields: [channelId], references: [id])
+  manualMessage AiManualMessage? @relation(fields: [manualMessageId], references: [id])
+
+  @@index([tenantId, campaignId, status])
+  @@index([tenantId, contactId, createdAt])
+  @@index([manualMessageId])
+  @@map("ai_campaign_recipients")
+}
+
+model CrmContact {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  fullName      String?   @map("full_name")
+  phone         String
+  email         String?
+  source        String    @default("whatsapp")
+  status        String    @default("new")
+  leadScore     Int       @default(0) @map("lead_score")
+  assignedTo    String?   @map("assigned_to")
+  tags          String[]  @default([])
+  notes         String?
+  pipelineId    String?   @map("pipeline_id")
+  stageId       String?   @map("stage_id")
+  lastContactAt DateTime? @map("last_contact_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  tenant         Tenant            @relation(fields: [tenantId], references: [id])
+  assignedUser   User?             @relation("CrmContactAssignee", fields: [assignedTo], references: [id])
+  pipeline       CrmPipeline?      @relation(fields: [pipelineId], references: [id])
+  stage          CrmStage?         @relation(fields: [stageId], references: [id])
+  activities     CrmActivity[]
+  conversations  AiConversation[]
+  messageQueue   AiMessageQueue[]
+  manualMessages AiManualMessage[]
+  campaignRecipients AiCampaignRecipient[]
+
+  @@unique([tenantId, phone])
+  @@index([tenantId, status])
+  @@index([tenantId, assignedTo])
+  @@index([tenantId, lastContactAt])
+  @@map("crm_contacts")
+}
+
+model CrmPipeline {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  key         String
+  name        String
+  description String?
+  status      String   @default("active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant        @relation(fields: [tenantId], references: [id])
+  stages     CrmStage[]
+  contacts   CrmContact[]
+  activities CrmActivity[]
+
+  @@unique([tenantId, key])
+  @@index([tenantId, status, sortOrder])
+  @@map("crm_pipelines")
+}
+
+model CrmStage {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  pipelineId  String   @map("pipeline_id")
+  key         String
+  name        String
+  probability Int      @default(0)
+  status      String   @default("active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant        @relation(fields: [tenantId], references: [id])
+  pipeline   CrmPipeline   @relation(fields: [pipelineId], references: [id])
+  contacts   CrmContact[]
+  activities CrmActivity[]
+
+  @@unique([tenantId, pipelineId, key])
+  @@index([tenantId, pipelineId, sortOrder])
+  @@map("crm_stages")
+}
+
+model CrmActivity {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  contactId   String?  @map("contact_id")
+  pipelineId  String?  @map("pipeline_id")
+  stageId     String?  @map("stage_id")
+  channelId   String?  @map("channel_id")
+  actorUserId String?  @map("actor_user_id")
+  type        String
+  direction   String?
+  title       String
+  body        String?
+  metadata    Json?
+  occurredAt  DateTime @default(now()) @map("occurred_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant       @relation(fields: [tenantId], references: [id])
+  contact  CrmContact?  @relation(fields: [contactId], references: [id])
+  pipeline CrmPipeline? @relation(fields: [pipelineId], references: [id])
+  stage    CrmStage?    @relation(fields: [stageId], references: [id])
+  channel  AiChannel?   @relation(fields: [channelId], references: [id])
+
+  @@index([tenantId, contactId, occurredAt])
+  @@index([tenantId, type, occurredAt])
+  @@index([tenantId, occurredAt])
+  @@map("crm_activities")
 }
