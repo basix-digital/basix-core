@@ -8,6 +8,7 @@
     "db:studio": "prisma studio",
     "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
     "db:migrate": "dotenv -e ../../.env -- prisma migrate dev",
+    "db:reset": "dotenv -e ../../.env -- prisma migrate reset",
     "db:generate": "dotenv -e ../../.env -- prisma generate",
     "db:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
     "test": "pnpm db:generate && tsc -p tsconfig.test.json && node --test \".test-build/**/*.spec.js\""
