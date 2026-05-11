@@ -170,3 +170,222 @@ export interface DashboardOverview {
   tenants: TenantRow[];
   billing: BillingSnapshot;
 }
+
+export interface CrmContact {
+  id: string;
+  tenantId: string;
+  fullName: string | null;
+  phone: string;
+  email: string | null;
+  source: string;
+  status: string;
+  leadScore: number;
+  assignedTo: string | null;
+  tags: string[];
+  lastContactAt: string | null;
+  createdAt: string;
+  pipeline?: { id: string; name: string; key: string } | null;
+  stage?: { id: string; name: string; key: string } | null;
+}
+
+export interface AiChannel {
+  id: string;
+  tenantId: string;
+  displayName: string;
+  phoneNumber: string;
+  agentIdDefault: string;
+  provider: string;
+  status: string;
+  rateLimitPerMinute: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiConversation {
+  id: string;
+  tenantId: string;
+  channelId: string;
+  phoneNumber: string;
+  agentId: string;
+  mode: string;
+  lastMessage: string;
+  lastMessageAt: string;
+  messageCount: number;
+  channel?: Pick<AiChannel, "id" | "displayName" | "phoneNumber">;
+  crmContact?: Pick<
+    CrmContact,
+    "id" | "fullName" | "phone" | "status" | "leadScore"
+  > | null;
+}
+
+export interface AiQueueMessage {
+  id: string;
+  tenantId: string;
+  channelId: string;
+  conversationId: string | null;
+  crmContactId: string | null;
+  messageId: string | null;
+  phoneNumber: string;
+  toNumber: string | null;
+  agentId: string;
+  threadId: string;
+  incomingMessage: string;
+  normalizedInput: string | null;
+  status: string;
+  attempts: number;
+  maxAttempts: number;
+  response: string | null;
+  error: string | null;
+  createdAt: string;
+  processAfter: string;
+  processedAt: string | null;
+  channel?: Pick<AiChannel, "id" | "displayName" | "phoneNumber">;
+  crmContact?: Pick<CrmContact, "id" | "fullName" | "phone"> | null;
+}
+
+export interface AiAgentLlmSettings {
+  id: string;
+  tenantId: string;
+  agentId: string;
+  provider: string;
+  model: string | null;
+  systemPrompt: string;
+  temperature: number | null;
+  topP: number | null;
+  topK: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiAgentRecord {
+  id: string;
+  name: string;
+  description: string;
+  settings: AiAgentLlmSettings | null;
+}
+
+export interface AiPlaybookRecord {
+  id: string;
+  tenantId: string;
+  title: string;
+  type: string;
+  category: string;
+  status: string;
+  currentVersionId: string | null;
+  performanceScore: number;
+  usageCount: number;
+  versions?: AiPlaybookVersion[];
+  assignments?: AiAgentPlaybookAssignment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiPlaybookVersion {
+  id: string;
+  tenantId: string;
+  playbookId: string;
+  version: number;
+  type: string;
+  category: string;
+  stage: string;
+  title: string;
+  triggerPhrases: string[];
+  situation: string;
+  responseStrategy: string;
+  exampleResponse: string;
+  rationale: string;
+  nextStep: string;
+  priority: number;
+  tags: string[];
+  minScore: number;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiAgentPlaybookAssignment {
+  id: string;
+  tenantId: string;
+  agentId: string;
+  playbookId: string;
+  playbookVersionId: string;
+  isEnabled: boolean;
+  isActive: boolean;
+  priorityOverride: number | null;
+  minScoreOverride: number | null;
+  activatedAt: string | null;
+  disabledAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiMessageTemplate {
+  id: string;
+  tenantId: string;
+  name: string;
+  channelType: "whatsapp" | "email";
+  provider: "brevo" | "twilio";
+  providerTemplateId: string | null;
+  subject: string | null;
+  body: string;
+  variables: string[];
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiCampaign {
+  id: string;
+  tenantId: string;
+  templateId: string;
+  name: string;
+  channelType: "whatsapp" | "email";
+  status: string;
+  audienceFilter: unknown;
+  scheduledAt: string | null;
+  sentAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  template?: AiMessageTemplate;
+  _count?: { recipients: number };
+}
+
+export interface CrmPipeline {
+  id: string;
+  name: string;
+  key: string;
+  stages: Array<{ id: string; name: string; key: string; probability: number }>;
+}
+
+export interface CrmActivity {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  direction: string | null;
+  occurredAt: string;
+  contact?: Pick<CrmContact, "id" | "fullName" | "phone"> | null;
+}
+
+export interface AiPlatformMetrics {
+  tenantId: string;
+  contacts: number;
+  channels: number;
+  conversations: number;
+  humanConversations: number;
+  queuedMessages: number;
+  failedMessages: number;
+  playbooks: number;
+  plan: PlanReport;
+}
+
+export interface AiPlatformSnapshot {
+  metrics: AiPlatformMetrics;
+  contacts: CrmContact[];
+  channels: AiChannel[];
+  chats: AiConversation[];
+  agents: AiAgentRecord[];
+  playbooks: AiPlaybookRecord[];
+  pipelines: CrmPipeline[];
+  activities: CrmActivity[];
+}
