@@ -32,7 +32,7 @@ const { ACCESS_COOKIE, REFRESH_COOKIE, USER_COOKIE, serializeUser } =
   require("@/lib/auth/session") as typeof import("@/lib/auth/session");
 const { getSessionUser } =
   require("@/lib/api/server") as typeof import("@/lib/api/server");
-const { backendFetch } =
+const { backendFetch, withBackendSessionRefresh } =
   require("@/lib/api/server") as typeof import("@/lib/api/server");
 
 describe("server session helpers", () => {
@@ -162,6 +162,45 @@ describe("server session helpers", () => {
       }),
     );
     expect(cookieStore.set).not.toHaveBeenCalled();
+  });
+
+  it("refreshes expired access tokens for console route handlers", async () => {
+    cookieValues.set(USER_COOKIE, serializeUser(sessionUser));
+    cookieValues.set(
+      ACCESS_COOKIE,
+      createJwt({ exp: Math.floor(Date.now() / 1000) - 60 }),
+    );
+    cookieValues.set(REFRESH_COOKIE, "valid-refresh");
+    fetchMock
+      .mockResolvedValueOnce(
+        createJsonResponse(true, {
+          accessToken: "new-access-token",
+          sessionValue: "new-refresh-token",
+          user: sessionUser,
+        }),
+      )
+      .mockResolvedValueOnce(createJsonResponse(true, [{ id: "tenant-id" }]));
+
+    await expect(
+      withBackendSessionRefresh(() => backendFetch("/admin/tenants")),
+    ).resolves.toEqual([{ id: "tenant-id" }]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:3000/api/admin/auth/refresh",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ sessionValue: "valid-refresh" }),
+      }),
+    );
+    const backendHeaders = fetchMock.mock.calls[1]?.[1]?.headers as Headers;
+    expect(backendHeaders.get("authorization")).toBe("Bearer new-access-token");
+    expect(cookieStore.set).toHaveBeenCalledWith(
+      ACCESS_COOKIE,
+      "new-access-token",
+      expect.any(Object),
+    );
   });
 });
 

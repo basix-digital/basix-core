@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
@@ -18,6 +19,11 @@ import type { ApiEnvelopeError, AuthResponse } from "./types";
 import { resolveErrorMessage } from "./errors";
 
 type QueryValue = string | number | boolean | null | undefined;
+type BackendFetchContext = {
+  refreshSession?: boolean;
+};
+
+const backendFetchContext = new AsyncLocalStorage<BackendFetchContext>();
 
 export class BackendError extends Error {
   constructor(
@@ -149,10 +155,22 @@ export async function backendFetch<T>(
   const cookieStore = await cookies();
   const query = init.query ? buildQuery(init.query) : "";
   const accessToken = cookieStore.get(ACCESS_COOKIE)?.value;
-  const token = isAccessTokenUsable(accessToken) ? accessToken : null;
+  const canRefreshSession =
+    backendFetchContext.getStore()?.refreshSession === true;
+  const token = isAccessTokenUsable(accessToken)
+    ? accessToken
+    : canRefreshSession
+      ? await refreshSession()
+      : null;
   const response = await callBackend(path, query, init, token);
 
   return parseBackendResponse<T>(response);
+}
+
+export async function withBackendSessionRefresh<T>(
+  callback: () => Promise<T>,
+): Promise<T> {
+  return backendFetchContext.run({ refreshSession: true }, callback);
 }
 
 async function callBackend(
