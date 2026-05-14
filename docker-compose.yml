@@ -26,9 +26,11 @@ services:
     command:
       - "postgres"
       - "-c"
-      - "shared_preload_libraries=pgsodium"
+      - "shared_preload_libraries=pgsodium,supabase_vault"
       - "-c"
       - "pgsodium.getkey_script=/usr/local/bin/pgsodium-getkey"
+      - "-c"
+      - "vault.getkey_script=/usr/local/bin/pgsodium-getkey"
       - "-c"
       - "log_statement=none"
     ports:

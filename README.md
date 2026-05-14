@@ -83,7 +83,18 @@ pnpm docker:vault:build
 pnpm docker:vault:up
 ```
 
-Check that the extensions were initialized:
+If a previous local boot failed during init, reset only the Vault containers and
+volumes before starting again:
+
+```bash
+docker compose rm -sf vault-postgres
+docker volume rm basix-core_vault_postgres_data basix-core_vault_pgsodium_keys
+pnpm docker:vault:build
+pnpm docker:vault:up
+```
+
+Check that the extensions were initialized and that a secret can be encrypted,
+decrypted, and removed:
 
 ```bash
 pnpm docker:vault:smoke
@@ -93,15 +104,6 @@ Open a psql shell:
 
 ```bash
 pnpm docker:vault:psql
-```
-
-Manual smoke test inside the psql shell:
-
-```sql
-SELECT vault.create_secret('local-test-secret', 'local_test_secret', 'local smoke test');
-SELECT id, name, decrypted_secret
-FROM vault.decrypted_secrets
-WHERE name = 'local_test_secret';
 ```
 
 The Vault connection string for local development is:

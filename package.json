@@ -20,7 +20,7 @@
     "docker:vault:up": "docker compose up -d vault-postgres",
     "docker:vault:logs": "docker compose logs -f vault-postgres",
     "docker:vault:psql": "docker compose exec vault-postgres psql -U postgres -d basix_vault",
-    "docker:vault:smoke": "docker compose exec vault-postgres psql -U postgres -d basix_vault -c \"SELECT extname FROM pg_extension WHERE extname IN ('pgsodium', 'supabase_vault');\""
+    "docker:vault:smoke": "docker compose exec -T vault-postgres psql -U postgres -d basix_vault -f /usr/local/share/basix-vault-smoke.sql"
   },
   "lint-staged": {
     "*.{ts,tsx,js,json,md,yml,yaml}": [

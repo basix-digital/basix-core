@@ -28,7 +28,13 @@ RUN git clone https://github.com/supabase/vault.git /tmp/supabase-vault \
     && rm -rf /tmp/supabase-vault
 
 COPY infra/postgres-vault/pgsodium-getkey /usr/local/bin/pgsodium-getkey
+COPY infra/postgres-vault/docker-entrypoint-vault.sh /usr/local/bin/docker-entrypoint-vault.sh
 COPY infra/postgres-vault/init/00-init-vault.sh /docker-entrypoint-initdb.d/00-init-vault.sh
+COPY infra/postgres-vault/smoke.sql /usr/local/share/basix-vault-smoke.sql
 
 RUN chmod 0755 /usr/local/bin/pgsodium-getkey \
-    && chmod 0755 /docker-entrypoint-initdb.d/00-init-vault.sh
+    && chmod 0755 /usr/local/bin/docker-entrypoint-vault.sh \
+    && chmod 0755 /docker-entrypoint-initdb.d/00-init-vault.sh \
+    && chmod 0644 /usr/local/share/basix-vault-smoke.sql
+
+ENTRYPOINT ["docker-entrypoint-vault.sh"]
