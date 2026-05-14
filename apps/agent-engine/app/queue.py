@@ -185,7 +185,14 @@ async def claim_next_manual_message(
             FROM ai_manual_messages m
             LEFT JOIN ai_campaign_recipients r ON r.manual_message_id = m.id
             LEFT JOIN ai_campaigns c ON c.id = r.campaign_id
-            WHERE m.delivery_status = 'queued'
+            WHERE (
+                m.delivery_status = 'queued'
+                OR (
+                    m.delivery_status = 'processing'
+                    AND m.lease_until IS NOT NULL
+                    AND m.lease_until <= NOW()
+                )
+              )
               AND (c.id IS NULL OR c.scheduled_at IS NULL OR c.scheduled_at <= NOW())
             ORDER BY m.created_at ASC
             FOR UPDATE OF m SKIP LOCKED

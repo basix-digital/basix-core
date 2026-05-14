@@ -57,3 +57,17 @@ async def test_manual_messages_respect_campaign_schedule_before_claiming():
     assert "LEFT JOIN ai_campaigns c ON c.id = r.campaign_id" in query
     assert "c.scheduled_at IS NULL OR c.scheduled_at <= NOW()" in query
     assert "FOR UPDATE OF m SKIP LOCKED" in query
+
+
+@pytest.mark.asyncio
+async def test_manual_message_claim_requeues_expired_processing_leases():
+    conn = FakeConnection()
+
+    result = await claim_next_manual_message(conn, lease_seconds=30)
+
+    assert result is None
+    query = conn.fetchrow_calls[0][0]
+    assert "m.delivery_status = 'queued'" in query
+    assert "m.delivery_status = 'processing'" in query
+    assert "m.lease_until IS NOT NULL" in query
+    assert "m.lease_until <= NOW()" in query
