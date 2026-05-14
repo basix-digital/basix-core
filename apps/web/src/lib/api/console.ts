@@ -10,6 +10,12 @@ import type {
   Tenant,
   TenantMetrics,
   TenantRow,
+  AiPlatformSnapshot,
+  AiQueueMessage,
+  AiCampaign,
+  AiChannel,
+  AiMessageTemplate,
+  AiPlaybookRecord,
 } from "./types";
 import { mergeUsageTrends } from "./usage-trends";
 
@@ -213,4 +219,324 @@ function buildSubscriptionGrowth(subscriptions: Subscription[]) {
   return Array.from(byDate.entries())
     .map(([date, count]) => ({ date, count }))
     .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export async function getAiPlatformSnapshot(
+  tenantId: string,
+): Promise<AiPlatformSnapshot> {
+  const query = { tenantId };
+  const [
+    metrics,
+    contacts,
+    channels,
+    chats,
+    agents,
+    playbooks,
+    pipelines,
+    activities,
+  ] = await Promise.all([
+    backendFetch<AiPlatformSnapshot["metrics"]>("/metrics", { query }),
+    backendFetch<{ data: AiPlatformSnapshot["contacts"]; total: number }>(
+      "/crm/contacts",
+      {
+        query: { ...query, limit: 8 },
+      },
+    ),
+    backendFetch<AiPlatformSnapshot["channels"]>("/channels", { query }),
+    backendFetch<{ data: AiPlatformSnapshot["chats"]; total: number }>(
+      "/chats",
+      {
+        query: { ...query, limit: 8 },
+      },
+    ),
+    backendFetch<AiPlatformSnapshot["agents"]>("/agents", { query }),
+    backendFetch<AiPlatformSnapshot["playbooks"]>("/playbooks", { query }),
+    backendFetch<AiPlatformSnapshot["pipelines"]>("/crm/pipelines", { query }),
+    backendFetch<AiPlatformSnapshot["activities"]>("/crm/activities", {
+      query: { ...query, limit: 8 },
+    }),
+  ]);
+
+  return {
+    metrics,
+    contacts: contacts.data,
+    channels,
+    chats: chats.data,
+    agents,
+    playbooks,
+    pipelines,
+    activities,
+  };
+}
+
+export async function listAiContacts(tenantId: string, limit = 50) {
+  return backendFetch<{ data: AiPlatformSnapshot["contacts"]; total: number }>(
+    "/crm/contacts",
+    { query: { tenantId, limit } },
+  );
+}
+
+export async function listAiChats(tenantId: string, limit = 50) {
+  return backendFetch<{ data: AiPlatformSnapshot["chats"]; total: number }>(
+    "/chats",
+    { query: { tenantId, limit } },
+  );
+}
+
+export async function listAiChannels(tenantId: string) {
+  return backendFetch<AiPlatformSnapshot["channels"]>("/channels", {
+    query: { tenantId },
+  });
+}
+
+export async function createAiChannel(payload: {
+  tenantId: string;
+  displayName: string;
+  phoneNumber: string;
+  agentIdDefault: string;
+  provider?: string;
+  rateLimitPerMinute?: number;
+}) {
+  return backendFetch<AiChannel>("/channels", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAiChannel(
+  id: string,
+  payload: {
+    tenantId: string;
+    displayName?: string;
+    phoneNumber?: string;
+    agentIdDefault?: string;
+    provider?: string;
+    status?: string;
+    rateLimitPerMinute?: number;
+  },
+) {
+  return backendFetch<AiChannel>(`/channels/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listAiAgents(tenantId: string) {
+  return backendFetch<AiPlatformSnapshot["agents"]>("/agents", {
+    query: { tenantId },
+  });
+}
+
+export async function updateAiAgentSettings(
+  agentId: string,
+  payload: {
+    tenantId: string;
+    provider?: string;
+    model?: string;
+    systemPrompt: string;
+    temperature?: number;
+    topP?: number;
+    topK?: number;
+  },
+) {
+  return backendFetch(`/agents/${agentId}/llm-settings`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listAiPlaybooks(tenantId: string) {
+  return backendFetch<AiPlatformSnapshot["playbooks"]>("/playbooks", {
+    query: { tenantId },
+  });
+}
+
+export async function createAiPlaybook(payload: {
+  tenantId: string;
+  title: string;
+  type: string;
+  category: string;
+  stage: string;
+  triggerPhrases?: string[];
+  situation: string;
+  responseStrategy: string;
+  exampleResponse: string;
+  rationale: string;
+  nextStep: string;
+  priority?: number;
+  tags?: string[];
+  minScore?: number;
+}) {
+  return backendFetch<AiPlaybookRecord>("/playbooks", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAiPlaybook(
+  id: string,
+  payload: {
+    tenantId: string;
+    title?: string;
+    type?: string;
+    category?: string;
+    status?: string;
+    stage?: string;
+    triggerPhrases?: string[];
+    situation?: string;
+    responseStrategy?: string;
+    exampleResponse?: string;
+    rationale?: string;
+    nextStep?: string;
+    priority?: number;
+    tags?: string[];
+    minScore?: number;
+  },
+) {
+  return backendFetch<AiPlaybookRecord>(`/playbooks/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function assignAiPlaybook(
+  playbookId: string,
+  payload: {
+    tenantId: string;
+    agentId: string;
+    playbookVersionId?: string;
+    isEnabled?: boolean;
+    isActive?: boolean;
+    priorityOverride?: number;
+    minScoreOverride?: number;
+  },
+) {
+  return backendFetch(`/playbooks/${playbookId}/assignments`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function takeoverAiChat(
+  phone: string,
+  payload: { tenantId: string; channelId?: string },
+) {
+  return backendFetch(`/chats/${encodeURIComponent(phone)}/takeover`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function releaseAiChat(
+  phone: string,
+  payload: { tenantId: string; channelId?: string },
+) {
+  return backendFetch(`/chats/${encodeURIComponent(phone)}/release`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function sendAiChatMessage(
+  phone: string,
+  payload: { tenantId: string; channelId?: string; body: string },
+) {
+  return backendFetch(`/chats/${encodeURIComponent(phone)}/messages`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listAiQueue(tenantId: string, limit = 50) {
+  return backendFetch<{ data: AiQueueMessage[]; total: number }>("/queue", {
+    query: { tenantId, limit },
+  });
+}
+
+export async function listAiActivities(tenantId: string, limit = 50) {
+  return backendFetch<AiPlatformSnapshot["activities"]>("/crm/activities", {
+    query: { tenantId, limit },
+  });
+}
+
+export async function listAiMessageTemplates(tenantId: string) {
+  return backendFetch<AiMessageTemplate[]>("/messaging/templates", {
+    query: { tenantId },
+  });
+}
+
+export async function createAiMessageTemplate(payload: {
+  tenantId: string;
+  name: string;
+  channelType: "whatsapp" | "email";
+  provider?: "brevo" | "twilio";
+  providerTemplateId?: string;
+  subject?: string;
+  body: string;
+  variables?: string[];
+}) {
+  return backendFetch<AiMessageTemplate>("/messaging/templates", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAiMessageTemplate(
+  id: string,
+  payload: {
+    tenantId: string;
+    name?: string;
+    provider?: "brevo" | "twilio";
+    providerTemplateId?: string;
+    subject?: string;
+    body?: string;
+    variables?: string[];
+    status?: string;
+  },
+) {
+  return backendFetch<AiMessageTemplate>(`/messaging/templates/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listAiCampaigns(tenantId: string, limit = 50) {
+  return backendFetch<{ data: AiCampaign[]; total: number }>(
+    "/messaging/campaigns",
+    {
+      query: { tenantId, limit },
+    },
+  );
+}
+
+export async function createAiCampaign(payload: {
+  tenantId: string;
+  templateId: string;
+  name: string;
+  channelType?: "whatsapp" | "email";
+  channelId?: string;
+  contactIds?: string[];
+  audienceStatus?: string;
+  variables?: Record<string, unknown>;
+  scheduledAt?: string;
+}) {
+  return backendFetch<AiCampaign>("/messaging/campaigns", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function sendAiNotification(payload: {
+  tenantId: string;
+  templateId: string;
+  channelId?: string;
+  contactId?: string;
+  phoneNumber?: string;
+  email?: string;
+  variables?: Record<string, unknown>;
+}) {
+  return backendFetch<AiCampaign>("/messaging/notifications", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }

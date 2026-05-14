@@ -32,6 +32,8 @@ const { ACCESS_COOKIE, REFRESH_COOKIE, USER_COOKIE, serializeUser } =
   require("@/lib/auth/session") as typeof import("@/lib/auth/session");
 const { getSessionUser } =
   require("@/lib/api/server") as typeof import("@/lib/api/server");
+const { backendFetch, withBackendSessionRefresh } =
+  require("@/lib/api/server") as typeof import("@/lib/api/server");
 
 describe("server session helpers", () => {
   const sessionUser = {
@@ -66,14 +68,23 @@ describe("server session helpers", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("rejects forged user cookies when refresh is invalid", async () => {
+  it("does not refresh from read-only session checks", async () => {
+    cookieValues.set(USER_COOKIE, serializeUser(sessionUser));
+    cookieValues.set(REFRESH_COOKIE, "forged-refresh");
+
+    await expect(getSessionUser()).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(cookieStore.delete).not.toHaveBeenCalled();
+  });
+
+  it("rejects forged user cookies when route handlers request refresh", async () => {
     cookieValues.set(USER_COOKIE, serializeUser(sessionUser));
     cookieValues.set(REFRESH_COOKIE, "forged-refresh");
     fetchMock.mockResolvedValueOnce(
       createJsonResponse(false, { message: "Invalid session" }),
     );
 
-    await expect(getSessionUser()).resolves.toBeNull();
+    await expect(getSessionUser({ refresh: true })).resolves.toBeNull();
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:3000/api/admin/auth/refresh",
@@ -107,7 +118,9 @@ describe("server session helpers", () => {
       }),
     );
 
-    await expect(getSessionUser()).resolves.toEqual(refreshedUser);
+    await expect(getSessionUser({ refresh: true })).resolves.toEqual(
+      refreshedUser,
+    );
 
     expect(cookieStore.set).toHaveBeenCalledWith(
       ACCESS_COOKIE,
@@ -125,6 +138,70 @@ describe("server session helpers", () => {
       expect.any(Object),
     );
   });
+
+  it("does not rotate refresh tokens from backend server reads", async () => {
+    cookieValues.set(USER_COOKIE, serializeUser(sessionUser));
+    cookieValues.set(
+      ACCESS_COOKIE,
+      createJwt({ exp: Math.floor(Date.now() / 1000) - 60 }),
+    );
+    cookieValues.set(REFRESH_COOKIE, "valid-refresh");
+    fetchMock.mockResolvedValueOnce(
+      createJsonResponse(false, { message: "Unauthorized" }, 401),
+    );
+
+    await expect(backendFetch("/admin/tenants")).rejects.toMatchObject({
+      status: 401,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:3000/api/admin/tenants",
+      expect.objectContaining({
+        cache: "no-store",
+      }),
+    );
+    expect(cookieStore.set).not.toHaveBeenCalled();
+  });
+
+  it("refreshes expired access tokens for console route handlers", async () => {
+    cookieValues.set(USER_COOKIE, serializeUser(sessionUser));
+    cookieValues.set(
+      ACCESS_COOKIE,
+      createJwt({ exp: Math.floor(Date.now() / 1000) - 60 }),
+    );
+    cookieValues.set(REFRESH_COOKIE, "valid-refresh");
+    fetchMock
+      .mockResolvedValueOnce(
+        createJsonResponse(true, {
+          accessToken: "new-access-token",
+          sessionValue: "new-refresh-token",
+          user: sessionUser,
+        }),
+      )
+      .mockResolvedValueOnce(createJsonResponse(true, [{ id: "tenant-id" }]));
+
+    await expect(
+      withBackendSessionRefresh(() => backendFetch("/admin/tenants")),
+    ).resolves.toEqual([{ id: "tenant-id" }]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:3000/api/admin/auth/refresh",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ sessionValue: "valid-refresh" }),
+      }),
+    );
+    const backendHeaders = fetchMock.mock.calls[1]?.[1]?.headers as Headers;
+    expect(backendHeaders.get("authorization")).toBe("Bearer new-access-token");
+    expect(cookieStore.set).toHaveBeenCalledWith(
+      ACCESS_COOKIE,
+      "new-access-token",
+      expect.any(Object),
+    );
+  });
 });
 
 function createJwt(payload: object) {
@@ -133,9 +210,19 @@ function createJwt(payload: object) {
   )}.signature`;
 }
 
-function createJsonResponse(ok: boolean, body: unknown) {
+function createJsonResponse(
+  ok: boolean,
+  body: unknown,
+  status = ok ? 200 : 401,
+) {
   return {
     ok,
+    status,
+    headers: {
+      get: jest.fn((name: string) =>
+        name.toLowerCase() === "content-type" ? "application/json" : null,
+      ),
+    },
     json: jest.fn(async () => body),
   } as unknown as Response;
 }

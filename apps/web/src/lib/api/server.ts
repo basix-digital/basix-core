@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
@@ -18,6 +19,11 @@ import type { ApiEnvelopeError, AuthResponse } from "./types";
 import { resolveErrorMessage } from "./errors";
 
 type QueryValue = string | number | boolean | null | undefined;
+type BackendFetchContext = {
+  refreshSession?: boolean;
+};
+
+const backendFetchContext = new AsyncLocalStorage<BackendFetchContext>();
 
 export class BackendError extends Error {
   constructor(
@@ -81,7 +87,9 @@ export async function clearSession() {
   cookieStore.delete(USER_COOKIE);
 }
 
-export async function getSessionUser(): Promise<SessionUser | null> {
+export async function getSessionUser(
+  options: { refresh?: boolean } = {},
+): Promise<SessionUser | null> {
   const cookieStore = await cookies();
   const user = parseUserCookie(cookieStore.get(USER_COOKIE)?.value);
   const accessToken = cookieStore.get(ACCESS_COOKIE)?.value;
@@ -93,6 +101,10 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   if (isAccessTokenUsable(accessToken)) {
     return user;
+  }
+
+  if (!options.refresh) {
+    return null;
   }
 
   if (!refreshToken) {
@@ -143,20 +155,22 @@ export async function backendFetch<T>(
   const cookieStore = await cookies();
   const query = init.query ? buildQuery(init.query) : "";
   const accessToken = cookieStore.get(ACCESS_COOKIE)?.value;
+  const canRefreshSession =
+    backendFetchContext.getStore()?.refreshSession === true;
   const token = isAccessTokenUsable(accessToken)
     ? accessToken
-    : await refreshSession();
+    : canRefreshSession
+      ? await refreshSession()
+      : null;
   const response = await callBackend(path, query, init, token);
 
-  if (response.status === 401) {
-    const refreshedToken = await refreshSession();
-    if (refreshedToken) {
-      const retry = await callBackend(path, query, init, refreshedToken);
-      return parseBackendResponse<T>(retry);
-    }
-  }
-
   return parseBackendResponse<T>(response);
+}
+
+export async function withBackendSessionRefresh<T>(
+  callback: () => Promise<T>,
+): Promise<T> {
+  return backendFetchContext.run({ refreshSession: true }, callback);
 }
 
 async function callBackend(
