@@ -14,6 +14,7 @@ describe("database package contract", () => {
     assert.equal(modelNames.includes("ApiToken"), true);
     assert.equal(modelNames.includes("ApiEvent"), true);
     assert.equal(modelNames.includes("UsageMetric"), true);
+    assert.equal(modelNames.includes("ProviderCredential"), true);
   });
 
   it("creates a PrismaClient instance without connecting eagerly", async () => {

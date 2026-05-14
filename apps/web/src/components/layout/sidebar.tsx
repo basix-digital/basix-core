@@ -4,6 +4,7 @@ import {
   Activity,
   AppWindow,
   BarChart3,
+  Bot,
   Building2,
   CreditCard,
   LayoutDashboard,
@@ -18,6 +19,21 @@ const navigation = [
   { href: "/dashboard/tenants", label: "Tenants", icon: Building2 },
   { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
   { href: "/dashboard/apps", label: "Apps", icon: AppWindow },
+  {
+    href: "/dashboard/ai-platform",
+    label: "AI CRM",
+    icon: Bot,
+    children: [
+      { href: "/dashboard/ai-platform/contacts", label: "CRM" },
+      { href: "/dashboard/ai-platform/chats", label: "Chats" },
+      { href: "/dashboard/ai-platform/channels", label: "Channels" },
+      { href: "/dashboard/ai-platform/agents", label: "Agents" },
+      { href: "/dashboard/ai-platform/playbooks", label: "Playbooks" },
+      { href: "/dashboard/ai-platform/campaigns", label: "Campaigns" },
+      { href: "/dashboard/ai-platform/queue", label: "Queue" },
+      { href: "/dashboard/ai-platform/activities", label: "Activities" },
+    ],
+  },
   { href: "/dashboard/usage", label: "Usage", icon: BarChart3 },
 ];
 
@@ -39,22 +55,44 @@ export function Sidebar() {
         <nav className="flex-1 space-y-1 px-3 py-4">
           {navigation.map((item) => {
             const Icon = item.icon;
+            const children = "children" in item ? item.children : undefined;
             const active =
               pathname === item.href ||
               (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
-                  active && "bg-secondary text-foreground",
-                )}
-              >
-                <Icon className="size-4" />
-                {item.label}
-              </Link>
+              <div key={item.href}>
+                <Link
+                  href={item.href}
+                  className={cn(
+                    "flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
+                    active && "bg-secondary text-foreground",
+                  )}
+                >
+                  <Icon className="size-4" />
+                  {item.label}
+                </Link>
+                {active && children ? (
+                  <div className="mt-1 space-y-1 pl-8">
+                    {children.map((child) => {
+                      const childActive = pathname === child.href;
+
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={cn(
+                            "flex h-8 items-center rounded-md px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
+                            childActive && "bg-secondary/70 text-foreground",
+                          )}
+                        >
+                          {child.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
             );
           })}
         </nav>

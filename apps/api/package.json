@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@basix-core/database": "workspace:*",
+    "@basix-core/vault": "workspace:*",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.1",
