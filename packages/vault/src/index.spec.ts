@@ -38,6 +38,21 @@ describe("vault package contract", () => {
     assert.equal(calls[0].values?.[0], "vault-id");
   });
 
+  it("deletes secrets by vault id", async () => {
+    const calls: Array<{ text: string; values?: unknown[] }> = [];
+    const client = new VaultClient({
+      pool: createMockPool(calls, []),
+    });
+
+    await client.deleteSecret("vault-id");
+
+    assert.equal(
+      calls[0].text,
+      "DELETE FROM vault.secrets WHERE id = $1::uuid",
+    );
+    assert.deepEqual(calls[0].values, ["vault-id"]);
+  });
+
   it("redacts operation failures", async () => {
     const client = new VaultClient({
       pool: {

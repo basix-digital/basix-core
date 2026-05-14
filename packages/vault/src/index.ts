@@ -93,6 +93,16 @@ export class VaultClient {
     }
   }
 
+  async deleteSecret(vaultSecretId: string) {
+    try {
+      await this.pool.query("DELETE FROM vault.secrets WHERE id = $1::uuid", [
+        vaultSecretId,
+      ]);
+    } catch {
+      throw new VaultOperationError("delete secret");
+    }
+  }
+
   async assertVaultReady() {
     try {
       await this.pool.query("SELECT 1 FROM vault.decrypted_secrets LIMIT 0");
@@ -127,6 +137,10 @@ export function updateSecret(input: VaultSecretUpdateInput) {
 
 export function readSecret(vaultSecretId: string) {
   return getDefaultClient().readSecret(vaultSecretId);
+}
+
+export function deleteSecret(vaultSecretId: string) {
+  return getDefaultClient().deleteSecret(vaultSecretId);
 }
 
 export function assertVaultReady() {

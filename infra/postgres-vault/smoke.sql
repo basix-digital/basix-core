@@ -5,6 +5,8 @@ FROM pg_extension
 WHERE extname IN ('pgsodium', 'supabase_vault')
 ORDER BY extname;
 
+SET ROLE basix_vault_app;
+
 SELECT vault.create_secret(
   'local-vault-smoke-secret',
   'basix_vault_smoke',
@@ -18,3 +20,5 @@ WHERE id = :'smoke_secret_id'::uuid;
 
 DELETE FROM vault.secrets
 WHERE id = :'smoke_secret_id'::uuid;
+
+RESET ROLE;

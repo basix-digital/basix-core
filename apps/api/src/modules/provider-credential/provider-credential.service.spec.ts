@@ -1,4 +1,4 @@
-import { ForbiddenException } from "@nestjs/common";
+import { ConflictException, ForbiddenException } from "@nestjs/common";
 import { TenantAccessService } from "../common/context/tenant-access.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { VaultService } from "../vault/vault.service";
@@ -25,6 +25,7 @@ describe("ProviderCredentialService", () => {
   };
   const vaultMock = {
     createSecret: jest.fn(),
+    deleteSecret: jest.fn(),
     updateSecret: jest.fn(),
   };
 
@@ -144,5 +145,27 @@ describe("ProviderCredentialService", () => {
     });
     expect(result).not.toHaveProperty("secret");
     expect(result).not.toHaveProperty("vaultSecretId");
+  });
+
+  it("deletes the created vault secret when credential insert loses a race", async () => {
+    tenantAccessMock.assertTenantAccess.mockResolvedValue(undefined);
+    prismaMock.providerCredential.findFirst.mockResolvedValue(null);
+    vaultMock.createSecret.mockResolvedValue("vault-id");
+    vaultMock.deleteSecret.mockResolvedValue(undefined);
+    prismaMock.providerCredential.create.mockRejectedValue({
+      code: "P2002",
+    });
+
+    await expect(
+      service.create("user-id", {
+        tenantId: "tenant-id",
+        provider: "twilio",
+        scopeType: "tenant",
+        key: "auth_token",
+        secret: "secret-value",
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(vaultMock.deleteSecret).toHaveBeenCalledWith("vault-id");
   });
 });

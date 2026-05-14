@@ -83,7 +83,8 @@ pnpm docker:vault:build
 pnpm docker:vault:up
 ```
 
-If a previous local boot failed during init, reset only the Vault containers and
+If a previous local boot failed during init, or if the Vault volume was created
+before the app role had delete permissions, reset only the Vault containers and
 volumes before starting again:
 
 ```bash

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import type { Prisma } from "@basix-core/database";
@@ -41,6 +42,8 @@ const allowedKeys = {
 
 @Injectable()
 export class ProviderCredentialService {
+  private readonly logger = new Logger(ProviderCredentialService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly tenantAccess: TenantAccessService,
@@ -92,6 +95,7 @@ export class ProviderCredentialService {
 
       return credential;
     } catch (error) {
+      await this.deleteCreatedVaultSecret(vaultSecretId);
       if (this.isUniqueConstraintError(error)) {
         throw new ConflictException("Provider credential already exists");
       }
@@ -300,5 +304,15 @@ export class ProviderCredentialService {
       "code" in error &&
       (error as { code?: string }).code === "P2002",
     );
+  }
+
+  private async deleteCreatedVaultSecret(vaultSecretId: string) {
+    try {
+      await this.vault.deleteSecret(vaultSecretId);
+    } catch {
+      this.logger.warn(
+        "Failed to delete orphaned provider credential secret after database insert failure",
+      );
+    }
   }
 }
