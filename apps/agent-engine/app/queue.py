@@ -93,8 +93,15 @@ async def claim_next(conn: asyncpg.Connection, lease_seconds: int) -> asyncpg.Re
             """
             SELECT *
             FROM ai_message_queue
-            WHERE status = 'queued'
-              AND process_after <= NOW()
+            WHERE (
+                status = 'queued'
+                AND process_after <= NOW()
+              )
+              OR (
+                status = 'processing'
+                AND lease_until IS NOT NULL
+                AND lease_until <= NOW()
+              )
             ORDER BY created_at ASC
             FOR UPDATE SKIP LOCKED
             LIMIT 1

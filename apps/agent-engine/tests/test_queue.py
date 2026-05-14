@@ -7,7 +7,7 @@ os.environ.setdefault(
     "postgresql://postgres:postgres@localhost:5432/basix_core",
 )
 
-from app.queue import claim_next_manual_message
+from app.queue import claim_next, claim_next_manual_message
 
 
 class FakeTransaction:
@@ -28,6 +28,21 @@ class FakeConnection:
     async def fetchrow(self, query, *args):
         self.fetchrow_calls.append((query, args))
         return None
+
+
+@pytest.mark.asyncio
+async def test_ai_message_claim_requeues_expired_processing_leases():
+    conn = FakeConnection()
+
+    result = await claim_next(conn, lease_seconds=30)
+
+    assert result is None
+    query = conn.fetchrow_calls[0][0]
+    assert "status = 'queued'" in query
+    assert "process_after <= NOW()" in query
+    assert "status = 'processing'" in query
+    assert "lease_until IS NOT NULL" in query
+    assert "lease_until <= NOW()" in query
 
 
 @pytest.mark.asyncio
