@@ -1,0 +1,14 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "infra/postgres-vault/Dockerfile",
+    "watchPatterns": ["infra/postgres-vault/**"]
+  },
+  "deploy": {
+    "startCommand": "docker-entrypoint-vault.sh postgres -c shared_preload_libraries=pgsodium,supabase_vault -c pgsodium.getkey_script=/usr/local/bin/pgsodium-getkey -c vault.getkey_script=/usr/local/bin/pgsodium-getkey -c log_statement=none",
+    "requiredMountPath": "/var/lib/postgresql",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}
