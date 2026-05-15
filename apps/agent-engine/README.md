@@ -1,5 +1,7 @@
 # Basix Agent Engine
 
+Version: `0.3.1`
+
 FastAPI + LangGraph runtime for the Basix Core AI Agent Platform.
 
 Responsibilities:
@@ -40,3 +42,21 @@ Fallback `.env` keys supported for local development:
 WhatsApp campaign templates use Twilio Content Template Builder IDs stored as
 `providerTemplateId` on `AiMessageTemplate`. Template variables are mapped from
 the template variable list into Twilio `ContentVariables` positions.
+
+## Local commands
+
+From `apps/agent-engine`:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+python3 -m pytest tests
+uvicorn app.main:app --reload --port 8001
+```
+
+Run the worker:
+
+```bash
+python3 -m app.worker
+```
