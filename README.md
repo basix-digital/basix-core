@@ -14,6 +14,7 @@ documentation after the `v0.3.0` Agent Platform and Vault release.
 
 The current platform includes:
 
+## Basix Core v0.3.2
 - NestJS control-plane API.
 - Next.js admin console.
 - PostgreSQL and Prisma for the core database.
