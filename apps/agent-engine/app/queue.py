@@ -333,7 +333,7 @@ async def claim_next_email_recipient(
               AND t.provider = 'brevo'
               AND (c.scheduled_at IS NULL OR c.scheduled_at <= NOW())
             ORDER BY r.created_at ASC
-            FOR UPDATE SKIP LOCKED
+            FOR UPDATE OF r SKIP LOCKED
             LIMIT 1
             """,
             lease_seconds,
