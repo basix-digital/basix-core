@@ -10,7 +10,7 @@ Every new SaaS should not need to recreate authentication, tenant management, AP
 
 Basix Core allows each SaaS to connect to a central platform using secure credentials and consume shared services through APIs.
 
-## Basix Core v0.1
+## Basix Core v0.3.2
 
 The first version focuses on the foundation:
 
