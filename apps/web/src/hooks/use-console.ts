@@ -20,6 +20,8 @@ export const queryKeys = {
   tenants: (params: Record<string, string | number>) =>
     ["tenants", params] as const,
   apps: (tenantId: string) => ["apps", tenantId] as const,
+  apiTokens: (params: Record<string, string>) =>
+    ["api-tokens", params] as const,
   appAuthUsers: (params: Record<string, string>) =>
     ["app-auth-users", params] as const,
   appAuthInvitations: (params: Record<string, string>) =>
@@ -118,7 +120,56 @@ export function useCreateApp() {
   });
 }
 
+export function useUpdateApp() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: {
+      id: string;
+      body: {
+        name?: string;
+        slug?: string;
+        baseUrl?: string | null;
+        status?: "active" | "disabled";
+      };
+    }) =>
+      consoleFetch<AppRecord>(`/api/console/apps/${request.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(request.body),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["apps"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+    },
+  });
+}
+
+export function useApiTokens(params: {
+  tenantId: string;
+  appId: string;
+  status: string;
+}) {
+  const search = new URLSearchParams({
+    tenantId: params.tenantId,
+    status: params.status,
+  });
+  if (params.appId) {
+    search.set("appId", params.appId);
+  }
+
+  return useQuery({
+    queryKey: queryKeys.apiTokens(params),
+    queryFn: () =>
+      consoleFetch<ApiTokenRecord[]>(
+        `/api/console/api-tokens?${search.toString()}`,
+      ),
+    enabled: Boolean(params.tenantId),
+  });
+}
+
 export function useCreateApiToken() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (payload: {
       appId: string;
@@ -130,6 +181,26 @@ export function useCreateApiToken() {
         method: "POST",
         body: JSON.stringify(payload),
       }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["api-tokens"] });
+      void queryClient.invalidateQueries({ queryKey: ["apps"] });
+    },
+  });
+}
+
+export function useRevokeApiToken() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (apiTokenId: string) =>
+      consoleFetch<ApiTokenRecord>("/api/console/api-tokens/revoke", {
+        method: "POST",
+        body: JSON.stringify({ apiTokenId }),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["api-tokens"] });
+      void queryClient.invalidateQueries({ queryKey: ["apps"] });
+    },
   });
 }
 

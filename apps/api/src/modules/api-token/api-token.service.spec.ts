@@ -12,6 +12,7 @@ describe("ApiTokenService", () => {
   const prismaMock = {
     $transaction: jest.fn(),
     apiToken: {
+      findMany: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -22,6 +23,7 @@ describe("ApiTokenService", () => {
   };
 
   const tenantAccessMock = {
+    assertTenantAccess: jest.fn(),
     getAccessibleApp: jest.fn(),
     getAccessibleApiToken: jest.fn(),
   };
@@ -101,6 +103,52 @@ describe("ApiTokenService", () => {
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(prismaMock.apiToken.create).not.toHaveBeenCalled();
+  });
+
+  it("lists token metadata for an accessible tenant without exposing hashes", async () => {
+    tenantAccessMock.assertTenantAccess.mockResolvedValue({
+      tenantId: "tenant-id",
+      userId: "user-id",
+      role: "OWNER",
+    });
+    prismaMock.apiToken.findMany.mockResolvedValue([
+      {
+        id: "token-id",
+        tenantId: "tenant-id",
+        appId: "app-id",
+        name: "Billing token",
+        prefix: "prefix",
+        scopes: ["read:usage"],
+        status: "active",
+        lastUsedAt: null,
+        expiresAt: null,
+        revokedAt: null,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+    ]);
+
+    const result = await service.list("user-id", {
+      tenantId: "tenant-id",
+      appId: "app-id",
+      status: "active",
+    });
+
+    expect(tenantAccessMock.assertTenantAccess).toHaveBeenCalledWith(
+      "user-id",
+      "tenant-id",
+    );
+    expect(prismaMock.apiToken.findMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        tenantId: "tenant-id",
+        appId: "app-id",
+        status: "active",
+        revokedAt: null,
+      }),
+      orderBy: { createdAt: "desc" },
+      select: expect.not.objectContaining({ tokenHash: true }),
+    });
+    expect(result[0]).not.toHaveProperty("tokenHash");
   });
 
   it("does not create tokens when the user has no access to the app tenant", async () => {

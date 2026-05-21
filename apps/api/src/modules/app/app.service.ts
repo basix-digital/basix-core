@@ -3,6 +3,7 @@ import type { Prisma } from "@basix-core/database";
 import { TenantAccessService } from "../common/context/tenant-access.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateAppDto } from "./dto/create-app.dto";
+import { UpdateAppDto } from "./dto/update-app.dto";
 
 const appSelect = {
   id: true,
@@ -77,6 +78,51 @@ export class AppService {
       orderBy: { createdAt: "desc" },
       select: appSelect,
     });
+  }
+
+  async update(userId: string, appId: string, data: UpdateAppDto) {
+    const app = await this.tenantAccess.getAccessibleApp(userId, appId);
+
+    try {
+      return await this.prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          const updated = await tx.app.update({
+            where: { id: app.id },
+            data: {
+              ...(data.name !== undefined ? { name: data.name } : {}),
+              ...(data.slug !== undefined ? { slug: data.slug } : {}),
+              ...(data.baseUrl !== undefined ? { baseUrl: data.baseUrl } : {}),
+              ...(data.status !== undefined ? { status: data.status } : {}),
+            },
+            select: appSelect,
+          });
+
+          await tx.auditLog.create({
+            data: {
+              tenantId: updated.tenantId,
+              actorUserId: userId,
+              action: "app.update",
+              entity: "App",
+              entityId: updated.id,
+              metadata: {
+                name: updated.name,
+                slug: updated.slug,
+                baseUrl: updated.baseUrl,
+                status: updated.status,
+              },
+            },
+          });
+
+          return updated;
+        },
+      );
+    } catch (error) {
+      if (this.isUniqueConstraintError(error)) {
+        throw new ConflictException("App slug already exists for tenant");
+      }
+
+      throw error;
+    }
   }
 
   private async createUniqueSlug(tenantId: string, value: string) {

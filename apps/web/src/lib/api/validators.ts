@@ -38,6 +38,18 @@ export const createAppSchema = z.object({
   baseUrl: z.string().trim().url().max(500).optional().or(z.literal("")),
 });
 
+export const updateAppSchema = z.object({
+  name: z.string().trim().min(2).max(120).optional(),
+  slug: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .max(80)
+    .optional(),
+  baseUrl: z.string().trim().url().max(500).optional().or(z.literal("")),
+  status: z.enum(["active", "disabled"]).optional(),
+});
+
 export const createApiTokenSchema = z.object({
   appId: z.string().uuid(),
   name: z.string().trim().min(2).max(120).optional().or(z.literal("")),
