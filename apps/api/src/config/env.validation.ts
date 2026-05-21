@@ -9,6 +9,14 @@ const envSchema = z
     DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
     JWT_ACCESS_SECRET: z.string().min(1, "JWT_ACCESS_SECRET is required"),
     JWT_ACCESS_EXPIRES_IN: z.string().min(1).default("15m"),
+    APP_AUTH_REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(7),
+    APP_AUTH_EMAIL_TOKEN_TTL_HOURS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(24),
+    APP_AUTH_INVITE_TTL_DAYS: z.coerce.number().int().positive().default(7),
+    BREVO_BASE_URL: z.string().url().default("https://api.brevo.com/v3"),
     OBSERVABILITY_HASH_SECRET: z.string().min(1).optional(),
     VAULT_DATABASE_URL: z.string().min(1).optional(),
     PROVIDER_CREDENTIALS_FALLBACK_ENV: z

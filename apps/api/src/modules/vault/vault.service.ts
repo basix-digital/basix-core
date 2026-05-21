@@ -29,6 +29,10 @@ export class VaultService implements OnModuleDestroy {
     return this.getClient().updateSecret(input);
   }
 
+  async readSecret(vaultSecretId: string) {
+    return this.getClient().readSecret(vaultSecretId);
+  }
+
   async deleteSecret(vaultSecretId: string) {
     return this.getClient().deleteSecret(vaultSecretId);
   }

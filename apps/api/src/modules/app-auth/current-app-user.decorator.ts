@@ -1,0 +1,9 @@
+import { createParamDecorator, ExecutionContext } from "@nestjs/common";
+import { AuthenticatedRequest } from "../common/context/request-context.types";
+
+export const CurrentAppUser = createParamDecorator(
+  (_data: unknown, context: ExecutionContext) => {
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    return request.appUser;
+  },
+);
