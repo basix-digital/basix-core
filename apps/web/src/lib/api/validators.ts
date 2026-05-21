@@ -68,6 +68,20 @@ export const createApiTokenSchema = z.object({
   expiresAt: z.string().datetime().optional().or(z.literal("")),
 });
 
+export const createEnvironmentVariableSchema = z.object({
+  tenantId: z.string().uuid(),
+  key: z
+    .string()
+    .trim()
+    .regex(/^[A-Z][A-Z0-9_]{0,127}$/),
+  value: z.string().min(1),
+  description: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+export const rotateEnvironmentVariableSchema = z.object({
+  value: z.string().min(1),
+});
+
 const appAuthScopeSchema = z
   .string()
   .trim()

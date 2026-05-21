@@ -10,6 +10,7 @@ import type {
   BillingSnapshot,
   DashboardOverview,
   Tenant,
+  TenantEnvironmentVariable,
   TenantMetrics,
   TenantRow,
 } from "@/lib/api/types";
@@ -22,6 +23,8 @@ export const queryKeys = {
   apps: (tenantId: string) => ["apps", tenantId] as const,
   apiTokens: (params: Record<string, string>) =>
     ["api-tokens", params] as const,
+  environmentVariables: (params: Record<string, string>) =>
+    ["environment-variables", params] as const,
   appAuthUsers: (params: Record<string, string>) =>
     ["app-auth-users", params] as const,
   appAuthInvitations: (params: Record<string, string>) =>
@@ -200,6 +203,199 @@ export function useRevokeApiToken() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["api-tokens"] });
       void queryClient.invalidateQueries({ queryKey: ["apps"] });
+    },
+  });
+}
+
+export function useEnvironmentVariables(params: {
+  tenantId: string;
+  status: string;
+  search: string;
+}) {
+  const search = new URLSearchParams({
+    tenantId: params.tenantId,
+    status: params.status,
+    search: params.search,
+  });
+
+  return useQuery({
+    queryKey: queryKeys.environmentVariables(params),
+    queryFn: () =>
+      consoleFetch<{ data: TenantEnvironmentVariable[]; tenants: Tenant[] }>(
+        `/api/console/environment-variables?${search.toString()}`,
+      ),
+  });
+}
+
+export function useCreateEnvironmentVariable() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: {
+      tenantId: string;
+      key: string;
+      value: string;
+      description?: string;
+    }) =>
+      consoleFetch<TenantEnvironmentVariable>(
+        "/api/console/environment-variables",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["environment-variables"],
+      });
+    },
+  });
+}
+
+export function useRotateEnvironmentVariable() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: { id: string; value: string }) =>
+      consoleFetch<TenantEnvironmentVariable>(
+        `/api/console/environment-variables/${request.id}/rotate`,
+        {
+          method: "POST",
+          body: JSON.stringify({ value: request.value }),
+        },
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["environment-variables"],
+      });
+    },
+  });
+}
+
+export function useRevokeEnvironmentVariable() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      consoleFetch<TenantEnvironmentVariable>(
+        `/api/console/environment-variables/${id}/revoke`,
+        { method: "POST" },
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["environment-variables"],
+      });
+    },
+  });
+}
+
+export function useAppAuthUsers(params: {
+  tenantId: string;
+  appId: string;
+  status: string;
+  search: string;
+}) {
+  const search = new URLSearchParams({
+    tenantId: params.tenantId,
+    status: params.status,
+    search: params.search,
+  });
+  if (params.appId) {
+    search.set("appId", params.appId);
+  }
+
+  return useQuery({
+    queryKey: queryKeys.appAuthUsers(params),
+    queryFn: () =>
+      consoleFetch<AppAuthUser[]>(
+        `/api/console/app-auth/users?${search.toString()}`,
+      ),
+    enabled: Boolean(params.tenantId),
+  });
+}
+
+export function useUpdateAppAuthUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: {
+      id: string;
+      body: {
+        name?: string;
+        status?: "pending" | "active" | "disabled";
+        scopes?: string[];
+      };
+    }) =>
+      consoleFetch<AppAuthUser>(`/api/console/app-auth/users/${request.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(request.body),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["app-auth-users"] });
+    },
+  });
+}
+
+export function useAppAuthInvitations(params: {
+  tenantId: string;
+  appId: string;
+  status: string;
+}) {
+  const search = new URLSearchParams({
+    tenantId: params.tenantId,
+    status: params.status,
+  });
+  if (params.appId) {
+    search.set("appId", params.appId);
+  }
+
+  return useQuery({
+    queryKey: queryKeys.appAuthInvitations(params),
+    queryFn: () =>
+      consoleFetch<AppAuthInvitation[]>(
+        `/api/console/app-auth/invitations?${search.toString()}`,
+      ),
+    enabled: Boolean(params.tenantId),
+  });
+}
+
+export function useCreateAppAuthInvitation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: {
+      tenantId: string;
+      appId: string;
+      email: string;
+      name?: string;
+      scopes?: string[];
+    }) =>
+      consoleFetch<AppAuthInvitation>("/api/console/app-auth/invitations", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["app-auth-users"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["app-auth-invitations"],
+      });
+    },
+  });
+}
+
+export function useAppAuthInvitationAction() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: { id: string; action: "resend" | "revoke" }) =>
+      consoleFetch<AppAuthInvitation>(
+        `/api/console/app-auth/invitations/${request.id}/${request.action}`,
+        { method: "POST" },
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["app-auth-invitations"],
+      });
     },
   });
 }
