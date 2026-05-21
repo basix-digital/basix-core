@@ -12,6 +12,8 @@ const variantByStatus: Record<string, BadgeProps["variant"]> = {
   suspended: "danger",
   canceled: "danger",
   revoked: "danger",
+  disabled: "neutral",
+  expired: "neutral",
   exceeded: "danger",
   inactive: "neutral",
   draft: "neutral",

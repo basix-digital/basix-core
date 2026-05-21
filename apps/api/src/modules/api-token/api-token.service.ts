@@ -10,6 +10,7 @@ import crypto from "node:crypto";
 import { TenantAccessService } from "../common/context/tenant-access.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateApiTokenDto } from "./dto/create-api-token.dto";
+import { ListApiTokensQueryDto } from "./dto/list-api-tokens-query.dto";
 import { RevokeApiTokenDto } from "./dto/revoke-api-token.dto";
 
 const TOKEN_PUBLIC_PREFIX = "bxs";
@@ -94,6 +95,21 @@ export class ApiTokenService {
     }
   }
 
+  async list(userId: string, query: ListApiTokensQueryDto) {
+    await this.tenantAccess.assertTenantAccess(userId, query.tenantId);
+    const now = new Date();
+
+    return this.prisma.apiToken.findMany({
+      where: {
+        tenantId: query.tenantId,
+        ...(query.appId ? { appId: query.appId } : {}),
+        ...this.statusWhere(query.status ?? "all", now),
+      },
+      orderBy: { createdAt: "desc" },
+      select: apiTokenSelect,
+    });
+  }
+
   async revoke(userId: string, data: RevokeApiTokenDto) {
     const apiToken = await this.tenantAccess.getAccessibleApiToken(
       userId,
@@ -162,6 +178,31 @@ export class ApiTokenService {
     }
 
     throw new InternalServerErrorException("Unable to generate API token");
+  }
+
+  private statusWhere(status: string, now: Date): Prisma.ApiTokenWhereInput {
+    if (status === "active") {
+      return {
+        status: "active",
+        revokedAt: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      };
+    }
+
+    if (status === "revoked") {
+      return {
+        OR: [{ status: "revoked" }, { revokedAt: { not: null } }],
+      };
+    }
+
+    if (status === "expired") {
+      return {
+        revokedAt: null,
+        expiresAt: { lte: now },
+      };
+    }
+
+    return {};
   }
 
   private isUniqueConstraintError(error: unknown) {

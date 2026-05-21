@@ -9,18 +9,25 @@ credential management.
 
 ## Current release
 
-Basix Core `v0.3.1` is a patch release that aligns package versions and
-documentation after the `v0.3.0` Agent Platform and Vault release.
+Basix Core `v0.4.0` is a minor release that introduces the App Auth module,
+enabling scoped external user access for registered applications.
+
+This release adds application-level authentication boundaries, invitation-based
+external users, JWT-based app user access, console management screens, and API
+routes for managing app auth users and invitations.
 
 The current platform includes:
 
-## Basix Core v0.3.3
+## Basix Core v0.4.0
 
 - NestJS control-plane API.
 - Next.js admin console.
 - PostgreSQL and Prisma for the core database.
 - Tenant, app, API token, scope, audit log, observability, usage metric,
-  enforcement, and billing modules.
+  enforcement, billing, and App Auth modules.
+- App Auth APIs for external application users, invitations, invitation resend,
+  invitation revoke, scoped JWT authentication, and tenant-safe request context.
+- Basix Core Console screens for managing app authentication users and invitations.
 - AI Platform admin APIs for channels, agents, chats, CRM contacts, playbooks,
   templates, campaigns, queue, and metrics.
 - FastAPI agent engine for Twilio WhatsApp webhooks, async agent execution,

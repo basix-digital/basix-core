@@ -10,6 +10,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { BillingModule } from "./modules/billing/billing.module";
 import { CommonModule } from "./modules/common/common.module";
 import { EnforcementModule } from "./modules/enforcement/enforcement.module";
+import { EnvironmentVariableModule } from "./modules/environment-variable/environment-variable.module";
 import { ObservabilityModule } from "./modules/observability/observability.module";
 import { PrismaModule } from "./modules/prisma/prisma.module";
 import { ProviderCredentialModule } from "./modules/provider-credential/provider-credential.module";
@@ -34,6 +35,7 @@ import { HealthController } from "./health.controller";
     EnforcementModule,
     BillingModule,
     ProviderCredentialModule,
+    EnvironmentVariableModule,
     AiPlatformModule,
   ],
   controllers: [HealthController],

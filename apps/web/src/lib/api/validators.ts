@@ -38,6 +38,18 @@ export const createAppSchema = z.object({
   baseUrl: z.string().trim().url().max(500).optional().or(z.literal("")),
 });
 
+export const updateAppSchema = z.object({
+  name: z.string().trim().min(2).max(120).optional(),
+  slug: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .max(80)
+    .optional(),
+  baseUrl: z.string().trim().url().max(500).optional().or(z.literal("")),
+  status: z.enum(["active", "disabled"]).optional(),
+});
+
 export const createApiTokenSchema = z.object({
   appId: z.string().uuid(),
   name: z.string().trim().min(2).max(120).optional().or(z.literal("")),
@@ -54,6 +66,20 @@ export const createApiTokenSchema = z.object({
     .optional()
     .default([]),
   expiresAt: z.string().datetime().optional().or(z.literal("")),
+});
+
+export const createEnvironmentVariableSchema = z.object({
+  tenantId: z.string().uuid(),
+  key: z
+    .string()
+    .trim()
+    .regex(/^[A-Z][A-Z0-9_]{0,127}$/),
+  value: z.string().min(1),
+  description: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+export const rotateEnvironmentVariableSchema = z.object({
+  value: z.string().min(1),
 });
 
 const appAuthScopeSchema = z

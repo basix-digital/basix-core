@@ -1,6 +1,7 @@
 import { normalizePlan, planLimits } from "@basix-core/shared";
 import { backendFetch, buildQuery } from "./server";
 import type {
+  ApiTokenRecord,
   AppRecord,
   BillingEvent,
   BillingSnapshot,
@@ -8,6 +9,7 @@ import type {
   Invoice,
   Subscription,
   Tenant,
+  TenantEnvironmentVariable,
   TenantMetrics,
   TenantRow,
   AiPlatformSnapshot,
@@ -54,16 +56,94 @@ export async function createApp(payload: {
   });
 }
 
+export async function updateApp(
+  id: string,
+  payload: {
+    name?: string;
+    slug?: string;
+    baseUrl?: string | null;
+    status?: "active" | "disabled";
+  },
+) {
+  return backendFetch<AppRecord>(`/admin/apps/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listApiTokens(query: {
+  tenantId: string;
+  appId?: string;
+  status?: string;
+}) {
+  return backendFetch<ApiTokenRecord[]>("/admin/api-tokens", { query });
+}
+
 export async function createApiToken(payload: {
   appId: string;
   name?: string;
   scopes?: string[];
   expiresAt?: string;
 }) {
-  return backendFetch("/admin/api-tokens", {
+  return backendFetch<ApiTokenRecord>("/admin/api-tokens", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export async function revokeApiToken(apiTokenId: string) {
+  return backendFetch<ApiTokenRecord>("/admin/api-tokens/revoke", {
+    method: "POST",
+    body: JSON.stringify({ apiTokenId }),
+  });
+}
+
+export async function listEnvironmentVariables(query: {
+  tenantId: string;
+  status?: string;
+  search?: string;
+}) {
+  return backendFetch<TenantEnvironmentVariable[]>(
+    "/admin/environment-variables",
+    { query },
+  );
+}
+
+export async function createEnvironmentVariable(payload: {
+  tenantId: string;
+  key: string;
+  value: string;
+  description?: string;
+}) {
+  return backendFetch<TenantEnvironmentVariable>(
+    "/admin/environment-variables",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function rotateEnvironmentVariable(
+  id: string,
+  payload: { value: string },
+) {
+  return backendFetch<TenantEnvironmentVariable>(
+    `/admin/environment-variables/${id}/rotate`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function revokeEnvironmentVariable(id: string) {
+  return backendFetch<TenantEnvironmentVariable>(
+    `/admin/environment-variables/${id}/revoke`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 export async function listAppAuthUsers(query: {

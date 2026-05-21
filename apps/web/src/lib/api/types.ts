@@ -51,6 +51,19 @@ export interface ApiTokenRecord {
   token?: string;
 }
 
+export interface TenantEnvironmentVariable {
+  id: string;
+  tenantId: string;
+  key: string;
+  description: string | null;
+  status: string;
+  createdBy: string | null;
+  rotatedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AppAuthUser {
   id: string;
   tenantId: string;
