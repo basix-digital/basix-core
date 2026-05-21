@@ -7,7 +7,7 @@ os.environ.setdefault(
     "postgresql://postgres:postgres@localhost:5432/basix_core",
 )
 
-from app.queue import claim_next, claim_next_manual_message
+from app.queue import claim_next, claim_next_email_recipient, claim_next_manual_message
 
 
 class FakeTransaction:
@@ -71,3 +71,15 @@ async def test_manual_message_claim_requeues_expired_processing_leases():
     assert "m.delivery_status = 'processing'" in query
     assert "m.lease_until IS NOT NULL" in query
     assert "m.lease_until <= NOW()" in query
+
+
+@pytest.mark.asyncio
+async def test_email_recipient_claim_locks_only_recipient_rows():
+    conn = FakeConnection()
+
+    result = await claim_next_email_recipient(conn, lease_seconds=30)
+
+    assert result is None
+    query = conn.fetchrow_calls[0][0]
+    assert "LEFT JOIN crm_contacts contact ON contact.id = r.contact_id" in query
+    assert "FOR UPDATE OF r SKIP LOCKED" in query

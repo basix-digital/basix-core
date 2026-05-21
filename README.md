@@ -14,7 +14,8 @@ documentation after the `v0.3.0` Agent Platform and Vault release.
 
 The current platform includes:
 
-## Basix Core v0.3.2
+## Basix Core v0.3.3
+
 - NestJS control-plane API.
 - Next.js admin console.
 - PostgreSQL and Prisma for the core database.
@@ -197,6 +198,7 @@ VAULT_DATABASE_URL="postgresql://basix_vault_app:basix_vault_app@localhost:5433/
 The pgsodium root key is persisted in the `vault_pgsodium_keys` Docker volume.
 Do not commit generated key files or copy production Vault keys into local
 development.
+
 - Never expose token hashes, refresh token hashes, provider secrets, or Vault
   secret identifiers in administrative DTOs.
 - Never store raw provider secrets in the core database.
