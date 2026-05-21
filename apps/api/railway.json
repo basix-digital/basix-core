@@ -15,6 +15,7 @@
     ]
   },
   "deploy": {
+    "preDeployCommand": "pnpm --filter @basix-core/database db:deploy",
     "startCommand": "pnpm --filter @basix-core/api start",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 60,
