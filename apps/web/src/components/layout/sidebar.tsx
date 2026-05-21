@@ -21,6 +21,7 @@ const navigation = [
   { href: "/dashboard/tenants", label: "Tenants", icon: Building2 },
   { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
   { href: "/dashboard/apps", label: "Apps", icon: AppWindow },
+  { href: "/dashboard/app-auth", label: "App Auth", icon: UsersRound },
   {
     href: "/dashboard/environment-variables",
     label: "Env Vars",
