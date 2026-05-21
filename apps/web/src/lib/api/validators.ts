@@ -56,6 +56,27 @@ export const createApiTokenSchema = z.object({
   expiresAt: z.string().datetime().optional().or(z.literal("")),
 });
 
+const appAuthScopeSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z0-9:._-]+$/);
+
+export const createAppInvitationSchema = z.object({
+  tenantId: z.string().uuid(),
+  appId: z.string().uuid(),
+  email: z.string().trim().email(),
+  name: z.string().trim().max(120).optional().or(z.literal("")),
+  scopes: z.array(appAuthScopeSchema).max(50).optional().default(["user"]),
+});
+
+export const updateAppUserSchema = z.object({
+  name: z.string().trim().max(120).optional().or(z.literal("")),
+  status: z.enum(["pending", "active", "disabled"]).optional(),
+  scopes: z.array(appAuthScopeSchema).max(50).optional(),
+});
+
 export const metricsQuerySchema = z.object({
   from: z.string().optional(),
   to: z.string().optional(),

@@ -16,6 +16,8 @@ import type {
   AiChannel,
   AiMessageTemplate,
   AiPlaybookRecord,
+  AppAuthInvitation,
+  AppAuthUser,
 } from "./types";
 import { mergeUsageTrends } from "./usage-trends";
 
@@ -62,6 +64,66 @@ export async function createApiToken(payload: {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export async function listAppAuthUsers(query: {
+  tenantId: string;
+  appId?: string;
+  status?: string;
+  search?: string;
+}) {
+  return backendFetch<AppAuthUser[]>("/admin/app-auth/users", { query });
+}
+
+export async function updateAppAuthUser(
+  id: string,
+  payload: {
+    name?: string;
+    status?: "pending" | "active" | "disabled";
+    scopes?: string[];
+  },
+) {
+  return backendFetch<AppAuthUser>(`/admin/app-auth/users/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listAppAuthInvitations(query: {
+  tenantId: string;
+  appId?: string;
+  status?: string;
+}) {
+  return backendFetch<AppAuthInvitation[]>("/admin/app-auth/invitations", {
+    query,
+  });
+}
+
+export async function createAppAuthInvitation(payload: {
+  tenantId: string;
+  appId: string;
+  email: string;
+  name?: string;
+  scopes?: string[];
+}) {
+  return backendFetch<AppAuthInvitation>("/admin/app-auth/invitations", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function resendAppAuthInvitation(id: string) {
+  return backendFetch<AppAuthInvitation>(
+    `/admin/app-auth/invitations/${id}/resend`,
+    { method: "POST" },
+  );
+}
+
+export async function revokeAppAuthInvitation(id: string) {
+  return backendFetch<AppAuthInvitation>(
+    `/admin/app-auth/invitations/${id}/revoke`,
+    { method: "POST" },
+  );
 }
 
 export async function getBillingSnapshot(): Promise<BillingSnapshot> {

@@ -51,6 +51,35 @@ export interface ApiTokenRecord {
   token?: string;
 }
 
+export interface AppAuthUser {
+  id: string;
+  tenantId: string;
+  appId: string;
+  email: string;
+  name: string | null;
+  status: string;
+  emailVerifiedAt: string | null;
+  scopes: string[];
+  lastLoginAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AppAuthInvitation {
+  id: string;
+  tenantId: string;
+  appId: string;
+  type: string;
+  email: string;
+  name: string | null;
+  scopes: string[];
+  expiresAt: string;
+  consumedAt: string | null;
+  revokedAt: string | null;
+  createdByUserId: string | null;
+  createdAt: string;
+}
+
 export interface Subscription {
   id: string;
   tenantId: string;
