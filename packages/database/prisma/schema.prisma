@@ -26,6 +26,7 @@ model Tenant {
   invoices                   Invoice[]
   billingEvents              BillingEvent[]
   providerCredentials        ProviderCredential[]
+  environmentVariables       TenantEnvironmentVariable[]
   appUsers                   AppUser[]
   appAuthTokens              AppAuthToken[]
   aiChannels                 AiChannel[]
@@ -358,6 +359,26 @@ model ProviderCredential {
   @@index([tenantId, provider, key, status])
   @@index([tenantId, provider, scopeType, scopeId, status])
   @@map("provider_credentials")
+}
+
+model TenantEnvironmentVariable {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  key           String
+  vaultSecretId String    @map("vault_secret_id")
+  description   String?
+  status        String    @default("active")
+  createdBy     String?   @map("created_by")
+  rotatedAt     DateTime? @map("rotated_at")
+  revokedAt     DateTime? @map("revoked_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, key, status])
+  @@index([tenantId, status, updatedAt])
+  @@map("tenant_environment_variables")
 }
 
 model AiChannel {

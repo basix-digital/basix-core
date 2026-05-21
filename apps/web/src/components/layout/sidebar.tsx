@@ -7,6 +7,7 @@ import {
   Bot,
   Building2,
   CreditCard,
+  KeyRound,
   LayoutDashboard,
   Shield,
   UsersRound,
@@ -20,6 +21,11 @@ const navigation = [
   { href: "/dashboard/tenants", label: "Tenants", icon: Building2 },
   { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
   { href: "/dashboard/apps", label: "Apps", icon: AppWindow },
+  {
+    href: "/dashboard/environment-variables",
+    label: "Env Vars",
+    icon: KeyRound,
+  },
   { href: "/dashboard/app-auth", label: "App Auth", icon: UsersRound },
   {
     href: "/dashboard/ai-platform",

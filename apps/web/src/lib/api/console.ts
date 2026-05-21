@@ -9,6 +9,7 @@ import type {
   Invoice,
   Subscription,
   Tenant,
+  TenantEnvironmentVariable,
   TenantMetrics,
   TenantRow,
   AiPlatformSnapshot,
@@ -95,6 +96,54 @@ export async function revokeApiToken(apiTokenId: string) {
     method: "POST",
     body: JSON.stringify({ apiTokenId }),
   });
+}
+
+export async function listEnvironmentVariables(query: {
+  tenantId: string;
+  status?: string;
+  search?: string;
+}) {
+  return backendFetch<TenantEnvironmentVariable[]>(
+    "/admin/environment-variables",
+    { query },
+  );
+}
+
+export async function createEnvironmentVariable(payload: {
+  tenantId: string;
+  key: string;
+  value: string;
+  description?: string;
+}) {
+  return backendFetch<TenantEnvironmentVariable>(
+    "/admin/environment-variables",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function rotateEnvironmentVariable(
+  id: string,
+  payload: { value: string },
+) {
+  return backendFetch<TenantEnvironmentVariable>(
+    `/admin/environment-variables/${id}/rotate`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function revokeEnvironmentVariable(id: string) {
+  return backendFetch<TenantEnvironmentVariable>(
+    `/admin/environment-variables/${id}/revoke`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 export async function listAppAuthUsers(query: {
