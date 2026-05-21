@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { apiEnvFilePaths } from "./config/env-file-path";
 import { validateEnv } from "./config/env.validation";
 import { ApiTokenModule } from "./modules/api-token/api-token.module";
+import { AppAuthModule } from "./modules/app-auth/app-auth.module";
 import { AiPlatformModule } from "./modules/ai-platform/ai-platform.module";
 import { AppsModule } from "./modules/app/app.module";
 import { AuthModule } from "./modules/auth/auth.module";
@@ -25,6 +26,7 @@ import { HealthController } from "./health.controller";
     PrismaModule,
     CommonModule,
     AuthModule,
+    AppAuthModule,
     TenantModule,
     AppsModule,
     ApiTokenModule,

@@ -26,6 +26,8 @@ model Tenant {
   invoices                   Invoice[]
   billingEvents              BillingEvent[]
   providerCredentials        ProviderCredential[]
+  appUsers                   AppUser[]
+  appAuthTokens              AppAuthToken[]
   aiChannels                 AiChannel[]
   aiConversations            AiConversation[]
   aiMessageQueue             AiMessageQueue[]
@@ -56,9 +58,11 @@ model App {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant    Tenant     @relation(fields: [tenantId], references: [id])
-  tokens    ApiToken[]
-  apiEvents ApiEvent[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  tokens        ApiToken[]
+  apiEvents     ApiEvent[]
+  appUsers      AppUser[]
+  appAuthTokens AppAuthToken[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -73,11 +77,12 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  tenants             TenantUser[]
-  refreshSessions     RefreshSession[]
-  auditLogs           AuditLog[]
-  billingEvents       BillingEvent[]
-  assignedCrmContacts CrmContact[]     @relation("CrmContactAssignee")
+  tenants              TenantUser[]
+  refreshSessions      RefreshSession[]
+  createdAppAuthTokens AppAuthToken[]   @relation("AppAuthTokenCreator")
+  auditLogs            AuditLog[]
+  billingEvents        BillingEvent[]
+  assignedCrmContacts  CrmContact[]     @relation("CrmContactAssignee")
 }
 
 model TenantUser {
@@ -137,6 +142,74 @@ model RefreshSession {
   @@index([userId])
   @@index([expiresAt])
   @@index([tokenId, expiresAt])
+}
+
+model AppUser {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  appId           String    @map("app_id")
+  email           String
+  name            String?
+  passwordHash    String    @map("password_hash")
+  status          String    @default("pending")
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  scopes          String[]
+  lastLoginAt     DateTime? @map("last_login_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  tenant          Tenant                  @relation(fields: [tenantId], references: [id])
+  app             App                     @relation(fields: [appId], references: [id])
+  refreshSessions AppUserRefreshSession[]
+
+  @@unique([tenantId, appId, email])
+  @@index([tenantId, appId, status])
+  @@index([tenantId, appId, updatedAt])
+  @@map("app_users")
+}
+
+model AppUserRefreshSession {
+  id        String    @id @default(uuid())
+  appUserId String    @map("app_user_id")
+  tokenId   String?   @unique @map("token_id")
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  rotatedAt DateTime? @map("rotated_at")
+
+  appUser AppUser @relation(fields: [appUserId], references: [id])
+
+  @@index([appUserId])
+  @@index([expiresAt])
+  @@index([tokenId, expiresAt])
+  @@map("app_user_refresh_sessions")
+}
+
+model AppAuthToken {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  appId           String    @map("app_id")
+  type            String
+  tokenId         String    @unique @map("token_id")
+  tokenHash       String    @map("token_hash")
+  email           String
+  name            String?
+  scopes          String[]
+  expiresAt       DateTime  @map("expires_at")
+  consumedAt      DateTime? @map("consumed_at")
+  revokedAt       DateTime? @map("revoked_at")
+  createdByUserId String?   @map("created_by_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  app       App    @relation(fields: [appId], references: [id])
+  createdBy User?  @relation("AppAuthTokenCreator", fields: [createdByUserId], references: [id])
+
+  @@index([tenantId, appId, type, email])
+  @@index([tenantId, appId, type, expiresAt])
+  @@index([createdByUserId])
+  @@map("app_auth_tokens")
 }
 
 model ApiEvent {
@@ -300,13 +373,13 @@ model AiChannel {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
-  tenant         Tenant            @relation(fields: [tenantId], references: [id])
-  conversations  AiConversation[]
-  messageQueue   AiMessageQueue[]
-  manualMessages AiManualMessage[]
-  media          AiMessageMedia[]
-  leadContexts   AiLeadContext[]
-  crmActivities  CrmActivity[]
+  tenant             Tenant                @relation(fields: [tenantId], references: [id])
+  conversations      AiConversation[]
+  messageQueue       AiMessageQueue[]
+  manualMessages     AiManualMessage[]
+  media              AiMessageMedia[]
+  leadContexts       AiLeadContext[]
+  crmActivities      CrmActivity[]
   campaignRecipients AiCampaignRecipient[]
 
   @@index([tenantId])
@@ -388,31 +461,31 @@ model AiMessageQueue {
 }
 
 model AiManualMessage {
-  id                String    @id @default(uuid())
-  tenantId          String    @map("tenant_id")
-  channelId         String    @map("channel_id")
-  conversationId    String?   @map("conversation_id")
-  crmContactId      String?   @map("crm_contact_id")
-  phoneNumber       String    @map("phone_number")
-  agentId           String    @map("agent_id")
-  senderUserId      String?   @map("sender_user_id")
-  body              String
-  providerTemplateId String?  @map("provider_template_id")
-  providerVariables Json?     @map("provider_variables")
-  providerMessageId String?   @map("provider_message_id")
-  deliveryStatus    String    @default("queued") @map("delivery_status")
-  deliveryError     String?   @map("delivery_error")
-  attempts          Int       @default(0)
-  maxAttempts       Int       @default(3) @map("max_attempts")
-  leaseUntil        DateTime? @map("lease_until")
-  sentAt            DateTime? @map("sent_at")
-  createdAt         DateTime  @default(now()) @map("created_at")
+  id                 String    @id @default(uuid())
+  tenantId           String    @map("tenant_id")
+  channelId          String    @map("channel_id")
+  conversationId     String?   @map("conversation_id")
+  crmContactId       String?   @map("crm_contact_id")
+  phoneNumber        String    @map("phone_number")
+  agentId            String    @map("agent_id")
+  senderUserId       String?   @map("sender_user_id")
+  body               String
+  providerTemplateId String?   @map("provider_template_id")
+  providerVariables  Json?     @map("provider_variables")
+  providerMessageId  String?   @map("provider_message_id")
+  deliveryStatus     String    @default("queued") @map("delivery_status")
+  deliveryError      String?   @map("delivery_error")
+  attempts           Int       @default(0)
+  maxAttempts        Int       @default(3) @map("max_attempts")
+  leaseUntil         DateTime? @map("lease_until")
+  sentAt             DateTime? @map("sent_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
 
-  tenant       Tenant           @relation(fields: [tenantId], references: [id])
-  channel      AiChannel        @relation(fields: [channelId], references: [id])
-  conversation AiConversation?  @relation(fields: [conversationId], references: [id])
-  crmContact   CrmContact?      @relation(fields: [crmContactId], references: [id])
-  media        AiMessageMedia[]
+  tenant             Tenant                @relation(fields: [tenantId], references: [id])
+  channel            AiChannel             @relation(fields: [channelId], references: [id])
+  conversation       AiConversation?       @relation(fields: [conversationId], references: [id])
+  crmContact         CrmContact?           @relation(fields: [crmContactId], references: [id])
+  media              AiMessageMedia[]
   campaignRecipients AiCampaignRecipient[]
 
   @@index([tenantId, phoneNumber, channelId, createdAt])
@@ -617,20 +690,20 @@ model AiPlaybookUsageEvent {
 }
 
 model AiMessageTemplate {
-  id          String   @id @default(uuid())
-  tenantId    String   @map("tenant_id")
-  name        String
-  channelType String   @map("channel_type")
-  provider    String
-  providerTemplateId String? @map("provider_template_id")
-  subject     String?
-  body        String
-  variables   String[] @default([])
-  status      String   @default("active")
-  createdBy   String   @map("created_by")
-  updatedBy   String?  @map("updated_by")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                 String   @id @default(uuid())
+  tenantId           String   @map("tenant_id")
+  name               String
+  channelType        String   @map("channel_type")
+  provider           String
+  providerTemplateId String?  @map("provider_template_id")
+  subject            String?
+  body               String
+  variables          String[] @default([])
+  status             String   @default("active")
+  createdBy          String   @map("created_by")
+  updatedBy          String?  @map("updated_by")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   tenant    Tenant       @relation(fields: [tenantId], references: [id])
   campaigns AiCampaign[]
@@ -664,24 +737,24 @@ model AiCampaign {
 }
 
 model AiCampaignRecipient {
-  id              String    @id @default(uuid())
-  tenantId        String    @map("tenant_id")
-  campaignId      String    @map("campaign_id")
-  contactId       String?   @map("contact_id")
-  channelId       String?   @map("channel_id")
-  manualMessageId String?   @map("manual_message_id")
-  phoneNumber     String?   @map("phone_number")
-  email           String?
-  status          String    @default("queued")
-  providerVariables Json?   @map("provider_variables")
-  providerMessageId String? @map("provider_message_id")
-  renderedSubject String?   @map("rendered_subject")
-  renderedBody    String    @map("rendered_body")
-  error           String?
-  queuedAt        DateTime? @default(now()) @map("queued_at")
-  sentAt          DateTime? @map("sent_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  campaignId        String    @map("campaign_id")
+  contactId         String?   @map("contact_id")
+  channelId         String?   @map("channel_id")
+  manualMessageId   String?   @map("manual_message_id")
+  phoneNumber       String?   @map("phone_number")
+  email             String?
+  status            String    @default("queued")
+  providerVariables Json?     @map("provider_variables")
+  providerMessageId String?   @map("provider_message_id")
+  renderedSubject   String?   @map("rendered_subject")
+  renderedBody      String    @map("rendered_body")
+  error             String?
+  queuedAt          DateTime? @default(now()) @map("queued_at")
+  sentAt            DateTime? @map("sent_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   tenant        Tenant           @relation(fields: [tenantId], references: [id])
   campaign      AiCampaign       @relation(fields: [campaignId], references: [id])
@@ -713,14 +786,14 @@ model CrmContact {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  tenant         Tenant            @relation(fields: [tenantId], references: [id])
-  assignedUser   User?             @relation("CrmContactAssignee", fields: [assignedTo], references: [id])
-  pipeline       CrmPipeline?      @relation(fields: [pipelineId], references: [id])
-  stage          CrmStage?         @relation(fields: [stageId], references: [id])
-  activities     CrmActivity[]
-  conversations  AiConversation[]
-  messageQueue   AiMessageQueue[]
-  manualMessages AiManualMessage[]
+  tenant             Tenant                @relation(fields: [tenantId], references: [id])
+  assignedUser       User?                 @relation("CrmContactAssignee", fields: [assignedTo], references: [id])
+  pipeline           CrmPipeline?          @relation(fields: [pipelineId], references: [id])
+  stage              CrmStage?             @relation(fields: [stageId], references: [id])
+  activities         CrmActivity[]
+  conversations      AiConversation[]
+  messageQueue       AiMessageQueue[]
+  manualMessages     AiManualMessage[]
   campaignRecipients AiCampaignRecipient[]
 
   @@unique([tenantId, phone])
