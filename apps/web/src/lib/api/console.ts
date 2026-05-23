@@ -38,6 +38,19 @@ export async function createTenant(payload: {
   });
 }
 
+export async function changeTenantTransactionalEmailProvider(
+  tenantId: string,
+  payload: { transactionalEmailProvider: "resend" | "brevo" },
+) {
+  return backendFetch<Tenant>(
+    `/admin/tenants/${tenantId}/transactional-email-provider`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
 export async function listApps(tenantId: string) {
   return backendFetch<AppRecord[]>("/admin/apps", {
     query: { tenantId },

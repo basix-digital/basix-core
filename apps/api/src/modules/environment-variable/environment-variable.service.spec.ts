@@ -83,7 +83,9 @@ describe("EnvironmentVariableService", () => {
     });
 
     expect(vaultMock.createSecret).toHaveBeenCalledWith({
-      name: "tenant/tenant-id/env/OPENROUTER_API_KEY",
+      name: expect.stringMatching(
+        /^tenant\/tenant-id\/env\/OPENROUTER_API_KEY\/[0-9a-f-]{36}$/,
+      ),
       secret: "secret-value",
       description: "Basix Core tenant env OPENROUTER_API_KEY",
     });
@@ -167,7 +169,7 @@ describe("EnvironmentVariableService", () => {
 
     expect(vaultMock.updateSecret).toHaveBeenCalledWith({
       vaultSecretId: "vault-id",
-      name: "tenant/tenant-id/env/OPENROUTER_API_KEY",
+      name: "tenant/tenant-id/env/OPENROUTER_API_KEY/variable-id",
       secret: "new-secret",
       description: "Basix Core tenant env OPENROUTER_API_KEY",
     });

@@ -75,6 +75,35 @@ describe("vault package contract", () => {
       },
     );
   });
+
+  it("keeps safe database metadata on operation failures", async () => {
+    const client = new VaultClient({
+      pool: {
+        async query() {
+          throw {
+            code: "23505",
+            constraint: "secrets_name_idx",
+            message: "database leaked secret-value",
+          };
+        },
+      },
+    });
+
+    await assert.rejects(
+      () =>
+        client.createSecret({
+          name: "name",
+          secret: "secret-value",
+        }),
+      (error) => {
+        assert.equal(error instanceof VaultOperationError, true);
+        assert.equal(String(error).includes("code=23505"), true);
+        assert.equal(String(error).includes("secrets_name_idx"), true);
+        assert.equal(String(error).includes("secret-value"), false);
+        return true;
+      },
+    );
+  });
 });
 
 function createMockPool(
