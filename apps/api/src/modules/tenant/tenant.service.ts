@@ -1,6 +1,7 @@
 import { ConflictException, Injectable } from "@nestjs/common";
 import type { Prisma } from "@basix-core/database";
 import { TenantRole } from "../common/constants/tenant-roles";
+import { TenantAccessService } from "../common/context/tenant-access.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateTenantDto } from "./dto/create-tenant.dto";
 
@@ -10,13 +11,17 @@ const tenantSelect = {
   slug: true,
   status: true,
   plan: true,
+  transactionalEmailProvider: true,
   createdAt: true,
   updatedAt: true,
 } as const;
 
 @Injectable()
 export class TenantService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly tenantAccess: TenantAccessService,
+  ) {}
 
   async create(userId: string, data: CreateTenantDto) {
     const slug = await this.createUniqueSlug(data.slug ?? data.name);
@@ -83,6 +88,38 @@ export class TenantService {
       orderBy: { createdAt: "desc" },
       select: tenantSelect,
     });
+  }
+
+  async updateTransactionalEmailProvider(
+    userId: string,
+    tenantId: string,
+    provider: string,
+  ) {
+    await this.tenantAccess.assertTenantAccess(userId, tenantId);
+
+    const normalizedProvider = provider === "brevo" ? "brevo" : "resend";
+    const tenant = await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        transactionalEmailProvider: normalizedProvider,
+      },
+      select: tenantSelect,
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        actorUserId: userId,
+        action: "tenant.transactional_email_provider.update",
+        entity: "Tenant",
+        entityId: tenantId,
+        metadata: {
+          transactionalEmailProvider: normalizedProvider,
+        },
+      },
+    });
+
+    return tenant;
   }
 
   private async createUniqueSlug(value: string) {

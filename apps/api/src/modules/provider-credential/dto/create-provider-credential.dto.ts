@@ -11,7 +11,7 @@ export class CreateProviderCredentialDto {
   @IsUUID()
   tenantId!: string;
 
-  @IsIn(["openrouter", "brevo", "twilio"])
+  @IsIn(["openrouter", "resend", "brevo", "twilio"])
   provider!: string;
 
   @IsIn(["tenant", "channel"])

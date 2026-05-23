@@ -32,6 +32,7 @@ const credentialSelect = {
 
 const allowedKeys = {
   openrouter: new Set(["api_key"]),
+  resend: new Set(["api_key", "sender_email", "sender_name"]),
   brevo: new Set(["api_key", "sender_email", "sender_name"]),
   twilio: new Set([
     "account_sid",
