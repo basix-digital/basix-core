@@ -17,6 +17,10 @@ export const createTenantSchema = z.object({
   plan: z.enum(["starter", "pro", "enterprise", "internal"]).optional(),
 });
 
+export const updateTenantEmailProviderSchema = z.object({
+  transactionalEmailProvider: z.enum(["resend", "brevo"]),
+});
+
 export const tenantListQuerySchema = z.object({
   search: z.string().optional().default(""),
   status: z.string().optional().default("all"),

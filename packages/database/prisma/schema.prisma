@@ -8,13 +8,14 @@ datasource db {
 }
 
 model Tenant {
-  id        String   @id @default(uuid())
-  name      String
-  slug      String   @unique
-  status    String   @default("active")
-  plan      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                         String   @id @default(uuid())
+  name                       String
+  slug                       String   @unique
+  status                     String   @default("active")
+  plan                       String?
+  transactionalEmailProvider String   @default("resend") @map("transactional_email_provider")
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
 
   apps                       App[]
   users                      TenantUser[]

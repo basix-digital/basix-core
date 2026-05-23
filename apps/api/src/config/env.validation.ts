@@ -16,7 +16,14 @@ const envSchema = z
       .positive()
       .default(24),
     APP_AUTH_INVITE_TTL_DAYS: z.coerce.number().int().positive().default(7),
+    RESEND_BASE_URL: z.string().url().default("https://api.resend.com"),
+    RESEND_API_KEY: z.string().optional(),
+    RESEND_SENDER_EMAIL: z.string().optional(),
+    RESEND_SENDER_NAME: z.string().default("Basix Core"),
     BREVO_BASE_URL: z.string().url().default("https://api.brevo.com/v3"),
+    BREVO_API_KEY: z.string().optional(),
+    BREVO_SENDER_EMAIL: z.string().optional(),
+    BREVO_SENDER_NAME: z.string().default("Basix Core"),
     OBSERVABILITY_HASH_SECRET: z.string().min(1).optional(),
     VAULT_DATABASE_URL: z.string().min(1).optional(),
     PROVIDER_CREDENTIALS_FALLBACK_ENV: z

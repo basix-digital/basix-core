@@ -9,16 +9,18 @@ credential management.
 
 ## Current release
 
-Basix Core `v0.4.0` is a minor release that introduces the App Auth module,
-enabling scoped external user access for registered applications.
+Basix Core `v0.5.1` is a maintenance release that expands App Auth email
+delivery with Resend as the default transactional provider, keeps Brevo
+available as a tenant-selected provider, and hardens Vault secret creation.
 
-This release adds application-level authentication boundaries, invitation-based
-external users, JWT-based app user access, console management screens, and API
-routes for managing app auth users and invitations.
+This release includes application-level authentication boundaries,
+invitation-based external users, JWT-based app user access, console management
+screens, tenant-level transactional email provider selection, and API routes for
+managing app auth users and invitations.
 
 The current platform includes:
 
-## Basix Core v0.4.0
+## Basix Core v0.5.1
 
 - NestJS control-plane API.
 - Next.js admin console.
@@ -31,8 +33,10 @@ The current platform includes:
 - AI Platform admin APIs for channels, agents, chats, CRM contacts, playbooks,
   templates, campaigns, queue, and metrics.
 - FastAPI agent engine for Twilio WhatsApp webhooks, async agent execution,
-  Brevo email delivery, Twilio WhatsApp templates, and OpenRouter-backed LLM
+  email delivery, Twilio WhatsApp templates, and OpenRouter-backed LLM
   calls through provider adapters.
+- Transactional App Auth emails default to Resend, with Brevo available as a
+  tenant-selected provider.
 - Separate Postgres Vault database with `pgsodium` and `supabase_vault`.
 - Internal `@basix-core/vault` package for reading and writing provider secrets
   without storing secret values in the core database.
