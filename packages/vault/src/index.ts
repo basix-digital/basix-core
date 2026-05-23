@@ -25,10 +25,21 @@ export interface VaultPool {
 }
 
 export class VaultOperationError extends Error {
-  constructor(operation: string) {
-    super(`Vault ${operation} failed`);
+  readonly cause?: VaultOperationErrorCause;
+
+  constructor(operation: string, cause?: unknown) {
+    const safeCause = toSafeCause(cause);
+    const detail = describeSafeCause(safeCause);
+    super(`Vault ${operation} failed${detail ? `: ${detail}` : ""}`);
     this.name = "VaultOperationError";
+    this.cause = safeCause;
   }
+}
+
+interface VaultOperationErrorCause {
+  code?: string;
+  constraint?: string;
+  routine?: string;
 }
 
 export class VaultClient {
@@ -60,8 +71,8 @@ export class VaultClient {
         [input.secret, input.name, input.description ?? null],
       );
       return result.rows[0].id;
-    } catch {
-      throw new VaultOperationError("create secret");
+    } catch (error) {
+      throw new VaultOperationError("create secret", error);
     }
   }
 
@@ -76,8 +87,8 @@ export class VaultClient {
           input.description ?? null,
         ],
       );
-    } catch {
-      throw new VaultOperationError("update secret");
+    } catch (error) {
+      throw new VaultOperationError("update secret", error);
     }
   }
 
@@ -88,8 +99,8 @@ export class VaultClient {
         [vaultSecretId],
       );
       return result.rows[0]?.decrypted_secret ?? null;
-    } catch {
-      throw new VaultOperationError("read secret");
+    } catch (error) {
+      throw new VaultOperationError("read secret", error);
     }
   }
 
@@ -98,16 +109,16 @@ export class VaultClient {
       await this.pool.query("DELETE FROM vault.secrets WHERE id = $1::uuid", [
         vaultSecretId,
       ]);
-    } catch {
-      throw new VaultOperationError("delete secret");
+    } catch (error) {
+      throw new VaultOperationError("delete secret", error);
     }
   }
 
   async assertVaultReady() {
     try {
       await this.pool.query("SELECT 1 FROM vault.decrypted_secrets LIMIT 0");
-    } catch {
-      throw new VaultOperationError("health check");
+    } catch (error) {
+      throw new VaultOperationError("health check", error);
     }
   }
 
@@ -145,4 +156,38 @@ export function deleteSecret(vaultSecretId: string) {
 
 export function assertVaultReady() {
   return getDefaultClient().assertVaultReady();
+}
+
+function toSafeCause(cause: unknown): VaultOperationErrorCause | undefined {
+  if (!cause || typeof cause !== "object") {
+    return undefined;
+  }
+
+  const error = cause as {
+    code?: unknown;
+    constraint?: unknown;
+    routine?: unknown;
+  };
+  const safeCause = {
+    code: typeof error.code === "string" ? error.code : undefined,
+    constraint:
+      typeof error.constraint === "string" ? error.constraint : undefined,
+    routine: typeof error.routine === "string" ? error.routine : undefined,
+  };
+
+  return Object.values(safeCause).some(Boolean) ? safeCause : undefined;
+}
+
+function describeSafeCause(cause?: VaultOperationErrorCause) {
+  if (!cause) {
+    return "";
+  }
+
+  const parts = [
+    cause.code ? `code=${cause.code}` : "",
+    cause.constraint ? `constraint=${cause.constraint}` : "",
+    cause.routine ? `routine=${cause.routine}` : "",
+  ].filter(Boolean);
+
+  return parts.join(" ");
 }

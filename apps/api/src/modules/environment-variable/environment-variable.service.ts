@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import type { Prisma } from "@basix-core/database";
+import crypto from "node:crypto";
 import { TenantAccessService } from "../common/context/tenant-access.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { VaultService } from "../vault/vault.service";
@@ -234,8 +235,18 @@ export class EnvironmentVariableService {
     };
   }
 
-  private buildSecretName(input: { tenantId: string; key: string }) {
-    return ["tenant", input.tenantId, "env", input.key].join("/");
+  private buildSecretName(input: {
+    tenantId: string;
+    key: string;
+    id?: string;
+  }) {
+    return [
+      "tenant",
+      input.tenantId,
+      "env",
+      input.key,
+      input.id ?? crypto.randomUUID(),
+    ].join("/");
   }
 
   private normalizeDescription(value?: string) {

@@ -88,7 +88,9 @@ describe("ProviderCredentialService", () => {
     });
 
     expect(vaultMock.createSecret).toHaveBeenCalledWith({
-      name: "tenant/tenant-id/openrouter/tenant/default/api_key",
+      name: expect.stringMatching(
+        /^tenant\/tenant-id\/openrouter\/tenant\/default\/api_key\/[0-9a-f-]{36}$/,
+      ),
       secret: "secret-value",
       description: "Basix Core openrouter.api_key",
     });
@@ -139,7 +141,7 @@ describe("ProviderCredentialService", () => {
 
     expect(vaultMock.updateSecret).toHaveBeenCalledWith({
       vaultSecretId: "vault-id",
-      name: "tenant/tenant-id/brevo/tenant/default/api_key",
+      name: "tenant/tenant-id/brevo/tenant/default/api_key/credential-id",
       secret: "new-secret",
       description: "Basix Core brevo.api_key",
     });

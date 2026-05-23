@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import type { Prisma } from "@basix-core/database";
+import crypto from "node:crypto";
 import { TenantAccessService } from "../common/context/tenant-access.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { VaultService } from "../vault/vault.service";
@@ -273,6 +274,7 @@ export class ProviderCredentialService {
   }
 
   private buildSecretName(input: {
+    id?: string;
     tenantId: string;
     provider: string;
     scopeType: string;
@@ -286,6 +288,7 @@ export class ProviderCredentialService {
       input.scopeType,
       input.scopeId ?? "default",
       input.key,
+      input.id ?? crypto.randomUUID(),
     ].join("/");
   }
 
