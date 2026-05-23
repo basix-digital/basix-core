@@ -1,9 +1,16 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, Plus, RotateCcw, Search, ShieldOff } from "lucide-react";
+import {
+  ArrowRight,
+  Plus,
+  RotateCcw,
+  Save,
+  Search,
+  ShieldOff,
+} from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
 import { planKeys } from "@basix-core/shared";
@@ -177,6 +184,7 @@ export function TenantManagementPage() {
                     <TableHead>Created</TableHead>
                     <TableHead>Current usage</TableHead>
                     <TableHead>Quota</TableHead>
+                    <TableHead>Email</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -218,6 +226,16 @@ export function TenantManagementPage() {
                             </div>
                             <Progress value={quotaPercent} />
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <EmailProviderControl
+                            tenantId={tenant.id}
+                            currentProvider={tenant.transactionalEmailProvider}
+                            pending={tenantAction.isPending}
+                            onAction={(path, body) =>
+                              tenantAction.mutate({ path, body })
+                            }
+                          />
                         </TableCell>
                         <TableCell>
                           <TenantActions
@@ -273,6 +291,53 @@ export function TenantManagementPage() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function EmailProviderControl({
+  tenantId,
+  currentProvider,
+  pending,
+  onAction,
+}: {
+  tenantId: string;
+  currentProvider: "resend" | "brevo";
+  pending: boolean;
+  onAction: (path: string, body?: unknown) => void;
+}) {
+  const [provider, setProvider] = useState(currentProvider);
+
+  useEffect(() => {
+    setProvider(currentProvider);
+  }, [currentProvider]);
+
+  return (
+    <div className="flex min-w-40 items-center gap-2">
+      <Select
+        className="w-28 capitalize"
+        value={provider}
+        onChange={(event) => setProvider(event.target.value as typeof provider)}
+      >
+        <option value="resend">Resend</option>
+        <option value="brevo">Brevo</option>
+      </Select>
+      <Button
+        aria-label="Save email provider"
+        variant="secondary"
+        size="icon"
+        disabled={pending || provider === currentProvider}
+        onClick={() =>
+          onAction(
+            `/api/console/tenants/${tenantId}/transactional-email-provider`,
+            {
+              transactionalEmailProvider: provider,
+            },
+          )
+        }
+      >
+        <Save />
+      </Button>
     </div>
   );
 }

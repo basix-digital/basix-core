@@ -20,6 +20,7 @@ export interface Tenant {
   slug: string;
   status: string;
   plan: string | null;
+  transactionalEmailProvider: "resend" | "brevo";
   createdAt: string;
   updatedAt: string;
 }
