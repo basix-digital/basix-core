@@ -10,7 +10,8 @@ Responsibilities:
 - Enqueue messages into `ai_message_queue`.
 - Run async workers that execute tenant-scoped LangGraph agents.
 - Send WhatsApp responses through Twilio.
-- Send WhatsApp template notifications/campaigns through Twilio ContentSid.
+- Send WhatsApp template notifications/campaigns through Twilio ContentSid or
+  Sent.dm templates.
 - Send email notifications/campaigns through Brevo.
 - Run LLM calls through provider adapters, with OpenRouter as the default.
 
@@ -36,7 +37,9 @@ Fallback `.env` keys supported for local development:
 - `AI_AGENT_DEFAULT_MODEL`: defaults to `openai/gpt-4.1-mini`.
 - `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME`: Brevo email delivery.
 - `TWILIO_ACCOUNT_SID` plus either `TWILIO_AUTH_TOKEN` or API key credentials.
+- `SENT_DM_API_KEY`, `SENT_DM_BASE_URL`: Sent.dm WhatsApp template delivery.
 
-WhatsApp campaign templates use Twilio Content Template Builder IDs stored as
-`providerTemplateId` on `AiMessageTemplate`. Template variables are mapped from
-the template variable list into Twilio `ContentVariables` positions.
+WhatsApp campaign templates can use Twilio Content Template Builder IDs or
+Sent.dm template IDs stored as `providerTemplateId` on `AiMessageTemplate`.
+Template variables are mapped into Twilio `ContentVariables` positions for
+Twilio and named Sent.dm `parameters` for Sent.dm.

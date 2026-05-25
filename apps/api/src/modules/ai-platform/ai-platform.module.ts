@@ -4,6 +4,7 @@ import { ObservabilityModule } from "../observability/observability.module";
 import { PrismaModule } from "../prisma/prisma.module";
 import { AgentsController } from "./agents.controller";
 import { AiMetricsController } from "./ai-metrics.controller";
+import { AiPlatformApiTokenController } from "./ai-platform-api-token.controller";
 import { AiPlatformService } from "./ai-platform.service";
 import { ChannelsController } from "./channels.controller";
 import { ChatsController } from "./chats.controller";
@@ -24,6 +25,7 @@ import { SecretCipherService } from "./secret-cipher.service";
     MessagingController,
     QueueController,
     AiMetricsController,
+    AiPlatformApiTokenController,
   ],
   providers: [AiPlatformService, SecretCipherService],
 })

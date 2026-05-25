@@ -6,7 +6,7 @@ import {
   BarChart3,
   Bot,
   Building2,
-  CreditCard,
+  CircleDollarSign,
   KeyRound,
   LayoutDashboard,
   Shield,
@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 const navigation = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/tenants", label: "Tenants", icon: Building2 },
-  { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
+  { href: "/dashboard/billing", label: "Billing", icon: CircleDollarSign },
   { href: "/dashboard/apps", label: "Apps", icon: AppWindow },
   { href: "/dashboard/app-auth", label: "App Auth", icon: UsersRound },
   {
@@ -27,7 +27,6 @@ const navigation = [
     label: "Env Vars",
     icon: KeyRound,
   },
-  { href: "/dashboard/app-auth", label: "App Auth", icon: UsersRound },
   {
     href: "/dashboard/ai-platform",
     label: "AI CRM",

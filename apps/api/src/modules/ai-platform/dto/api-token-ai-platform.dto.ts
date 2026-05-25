@@ -13,12 +13,7 @@ import {
   Min,
 } from "class-validator";
 
-export class TenantScopedQueryDto {
-  @IsUUID()
-  tenantId!: string;
-}
-
-export class PaginatedTenantQueryDto extends TenantScopedQueryDto {
+export class ApiPaginatedQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -33,7 +28,7 @@ export class PaginatedTenantQueryDto extends TenantScopedQueryDto {
   offset = 0;
 }
 
-export class ListContactsQueryDto extends PaginatedTenantQueryDto {
+export class ApiListContactsQueryDto extends ApiPaginatedQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
@@ -43,10 +38,7 @@ export class ListContactsQueryDto extends PaginatedTenantQueryDto {
   status?: string;
 }
 
-export class CreateContactDto {
-  @IsUUID()
-  tenantId!: string;
-
+export class ApiCreateContactDto {
   @IsOptional()
   @IsString()
   fullName?: string;
@@ -87,10 +79,7 @@ export class CreateContactDto {
   notes?: string;
 }
 
-export class UpdateContactDto {
-  @IsUUID()
-  tenantId!: string;
-
+export class ApiUpdateContactDto {
   @IsOptional()
   @IsString()
   fullName?: string;
@@ -132,10 +121,7 @@ export class UpdateContactDto {
   stageId?: string;
 }
 
-export class CreateChannelDto {
-  @IsUUID()
-  tenantId!: string;
-
+export class ApiCreateChannelDto {
   @IsString()
   displayName!: string;
 
@@ -160,10 +146,7 @@ export class CreateChannelDto {
   rateLimitPerMinute?: number;
 }
 
-export class UpdateChannelDto {
-  @IsUUID()
-  tenantId!: string;
-
+export class ApiUpdateChannelDto {
   @IsOptional()
   @IsString()
   displayName?: string;
@@ -195,13 +178,13 @@ export class UpdateChannelDto {
   rateLimitPerMinute?: number;
 }
 
-export class ChatQueryDto extends TenantScopedQueryDto {
+export class ApiChatQueryDto {
   @IsOptional()
   @IsUUID()
   channelId?: string;
 }
 
-export class ChatListQueryDto extends PaginatedTenantQueryDto {
+export class ApiChatListQueryDto extends ApiPaginatedQueryDto {
   @IsOptional()
   @IsUUID()
   channelId?: string;
@@ -211,7 +194,22 @@ export class ChatListQueryDto extends PaginatedTenantQueryDto {
   mode?: string;
 }
 
-export class QueueListQueryDto extends PaginatedTenantQueryDto {
+export class ApiTakeoverDto {
+  @IsOptional()
+  @IsUUID()
+  channelId?: string;
+}
+
+export class ApiManualMessageDto {
+  @IsOptional()
+  @IsUUID()
+  channelId?: string;
+
+  @IsString()
+  body!: string;
+}
+
+export class ApiQueueListQueryDto extends ApiPaginatedQueryDto {
   @IsOptional()
   @IsString()
   status?: string;
@@ -221,31 +219,7 @@ export class QueueListQueryDto extends PaginatedTenantQueryDto {
   channelId?: string;
 }
 
-export class TakeoverDto {
-  @IsUUID()
-  tenantId!: string;
-
-  @IsOptional()
-  @IsUUID()
-  channelId?: string;
-}
-
-export class ManualMessageDto {
-  @IsUUID()
-  tenantId!: string;
-
-  @IsOptional()
-  @IsUUID()
-  channelId?: string;
-
-  @IsString()
-  body!: string;
-}
-
-export class AgentSettingsDto {
-  @IsUUID()
-  tenantId!: string;
-
+export class ApiAgentSettingsDto {
   @IsOptional()
   @IsIn(["openrouter", "openai"])
   provider?: string;
@@ -277,10 +251,7 @@ export class AgentSettingsDto {
   topK?: number;
 }
 
-export class CreatePlaybookDto {
-  @IsUUID()
-  tenantId!: string;
-
+export class ApiCreatePlaybookDto {
   @IsString()
   title!: string;
 
@@ -336,10 +307,7 @@ export class CreatePlaybookDto {
   isGlobalTemplate?: boolean;
 }
 
-export class UpdatePlaybookDto {
-  @IsUUID()
-  tenantId!: string;
-
+export class ApiUpdatePlaybookDto {
   @IsOptional()
   @IsString()
   title?: string;
@@ -404,10 +372,7 @@ export class UpdatePlaybookDto {
   minScore?: number;
 }
 
-export class AssignPlaybookDto {
-  @IsUUID()
-  tenantId!: string;
-
+export class ApiAssignPlaybookDto {
   @IsString()
   agentId!: string;
 
@@ -437,7 +402,7 @@ export class AssignPlaybookDto {
   minScoreOverride?: number;
 }
 
-export class ListMessageTemplatesQueryDto extends TenantScopedQueryDto {
+export class ApiListMessageTemplatesQueryDto {
   @IsOptional()
   @IsIn(["whatsapp", "email"])
   channelType?: string;
@@ -447,10 +412,7 @@ export class ListMessageTemplatesQueryDto extends TenantScopedQueryDto {
   status?: string;
 }
 
-export class CreateMessageTemplateDto {
-  @IsUUID()
-  tenantId!: string;
-
+export class ApiCreateMessageTemplateDto {
   @IsString()
   name!: string;
 
@@ -478,10 +440,7 @@ export class CreateMessageTemplateDto {
   variables?: string[];
 }
 
-export class UpdateMessageTemplateDto {
-  @IsUUID()
-  tenantId!: string;
-
+export class ApiUpdateMessageTemplateDto {
   @IsOptional()
   @IsString()
   name?: string;
@@ -512,7 +471,7 @@ export class UpdateMessageTemplateDto {
   status?: string;
 }
 
-export class ListCampaignsQueryDto extends PaginatedTenantQueryDto {
+export class ApiListCampaignsQueryDto extends ApiPaginatedQueryDto {
   @IsOptional()
   @IsIn(["draft", "queued", "sent", "failed", "canceled"])
   status?: string;
@@ -522,10 +481,7 @@ export class ListCampaignsQueryDto extends PaginatedTenantQueryDto {
   channelType?: string;
 }
 
-export class CreateCampaignDto {
-  @IsUUID()
-  tenantId!: string;
-
+export class ApiCreateCampaignDto {
   @IsUUID()
   templateId!: string;
 
@@ -558,10 +514,7 @@ export class CreateCampaignDto {
   scheduledAt?: string;
 }
 
-export class SendNotificationDto {
-  @IsUUID()
-  tenantId!: string;
-
+export class ApiSendNotificationDto {
   @IsUUID()
   templateId!: string;
 

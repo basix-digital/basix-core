@@ -88,6 +88,27 @@ describe("AiPlatformService", () => {
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
 
+  it("rejects API token actors outside their bound tenant", async () => {
+    await expect(
+      service.listContacts(
+        {
+          type: "apiToken",
+          tenantId: "token-tenant",
+          appId: "app-id",
+          apiTokenId: "token-id",
+        },
+        {
+          tenantId: "other-tenant",
+          limit: 20,
+          offset: 0,
+        },
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(tenantAccessMock.assertTenantAccess).not.toHaveBeenCalled();
+    expect(planLimitMock.validateTenantRequestQuota).not.toHaveBeenCalled();
+  });
+
   it("queues WhatsApp campaign recipients inside the selected tenant", async () => {
     tenantAccessMock.assertTenantAccess.mockResolvedValue(undefined);
     prismaMock.aiMessageTemplate.findFirst.mockResolvedValue({
@@ -95,6 +116,8 @@ describe("AiPlatformService", () => {
       tenantId: "tenant-id",
       name: "Follow up",
       channelType: "whatsapp",
+      provider: "twilio",
+      providerTemplateId: "HX123",
       subject: null,
       body: "Oi {{firstName}}, vamos conversar?",
       variables: ["firstName"],
@@ -154,6 +177,7 @@ describe("AiPlatformService", () => {
         crmContactId: "contact-id",
         phoneNumber: "+5511999999999",
         body: "Oi Maria, vamos conversar?",
+        providerVariables: { "1": "Maria" },
       }),
       select: { id: true },
     });
@@ -166,6 +190,71 @@ describe("AiPlatformService", () => {
         manualMessageId: "manual-id",
         status: "queued",
       }),
+    });
+  });
+
+  it("keeps named WhatsApp template variables for Sent.dm", async () => {
+    tenantAccessMock.assertTenantAccess.mockResolvedValue(undefined);
+    prismaMock.aiMessageTemplate.findFirst.mockResolvedValue({
+      id: "template-id",
+      tenantId: "tenant-id",
+      name: "Sent follow up",
+      channelType: "whatsapp",
+      provider: "sent_dm",
+      providerTemplateId: "tmpl_sent_123",
+      subject: null,
+      body: "Oi {{firstName}}, pedido {{orderNumber}}",
+      variables: ["firstName", "orderNumber"],
+      status: "active",
+    });
+    prismaMock.aiChannel.findFirst.mockResolvedValue({
+      id: "channel-id",
+      tenantId: "tenant-id",
+      displayName: "Inbound",
+      phoneNumber: "whatsapp:+5511888888888",
+      agentIdDefault: "sdr_assistant",
+    });
+    prismaMock.crmContact.findMany.mockResolvedValue([
+      {
+        id: "contact-id",
+        fullName: "Maria Silva",
+        phone: "+5511999999999",
+        email: "maria@example.com",
+        status: "new",
+      },
+    ]);
+    prismaMock.aiCampaign.create.mockResolvedValue({
+      id: "campaign-id",
+      tenantId: "tenant-id",
+    });
+    prismaMock.aiConversation.upsert.mockResolvedValue({
+      id: "conversation-id",
+    });
+    prismaMock.aiManualMessage.create.mockResolvedValue({ id: "manual-id" });
+    prismaMock.aiCampaign.update.mockResolvedValue({
+      id: "campaign-id",
+      tenantId: "tenant-id",
+      status: "queued",
+    });
+
+    await service.createCampaign("user-id", {
+      tenantId: "tenant-id",
+      templateId: "template-id",
+      name: "Activation",
+      channelId: "channel-id",
+      contactIds: ["contact-id"],
+      variables: { orderNumber: "#123" },
+    });
+
+    expect(prismaMock.aiManualMessage.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        providerTemplateId: "tmpl_sent_123",
+        providerVariables: {
+          firstName: "Maria",
+          orderNumber: "#123",
+        },
+      }),
+      select: { id: true },
     });
   });
 });

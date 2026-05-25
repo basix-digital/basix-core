@@ -624,7 +624,7 @@ export async function createAiMessageTemplate(payload: {
   tenantId: string;
   name: string;
   channelType: "whatsapp" | "email";
-  provider?: "brevo" | "twilio";
+  provider?: "brevo" | "twilio" | "sent_dm";
   providerTemplateId?: string;
   subject?: string;
   body: string;
@@ -641,7 +641,7 @@ export async function updateAiMessageTemplate(
   payload: {
     tenantId: string;
     name?: string;
-    provider?: "brevo" | "twilio";
+    provider?: "brevo" | "twilio" | "sent_dm";
     providerTemplateId?: string;
     subject?: string;
     body?: string;

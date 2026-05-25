@@ -144,6 +144,43 @@ describe("ProviderCredentialService", () => {
     });
   });
 
+  it("stores Sent.dm API key credentials", async () => {
+    tenantAccessMock.assertTenantAccess.mockResolvedValue(undefined);
+    prismaMock.providerCredential.findFirst.mockResolvedValue(null);
+    vaultMock.createSecret.mockResolvedValue("vault-id");
+    prismaMock.providerCredential.create.mockResolvedValue({
+      id: "credential-id",
+      tenantId: "tenant-id",
+      provider: "sent_dm",
+      scopeType: "tenant",
+      scopeId: null,
+      key: "api_key",
+      status: "active",
+      metadata: null,
+      createdBy: "user-id",
+      rotatedAt: null,
+      revokedAt: null,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+
+    await service.create("user-id", {
+      tenantId: "tenant-id",
+      provider: "sent_dm",
+      scopeType: "tenant",
+      key: "api_key",
+      secret: "secret-value",
+    });
+
+    expect(vaultMock.createSecret).toHaveBeenCalledWith({
+      name: expect.stringMatching(
+        /^tenant\/tenant-id\/sent_dm\/tenant\/default\/api_key\/[0-9a-f-]{36}$/,
+      ),
+      secret: "secret-value",
+      description: "Basix Core sent_dm.api_key",
+    });
+  });
+
   it("rotates the vault secret without exposing the vault id in the response", async () => {
     prismaMock.providerCredential.findUnique.mockResolvedValue({
       id: "credential-id",

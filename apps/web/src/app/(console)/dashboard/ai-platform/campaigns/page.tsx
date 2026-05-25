@@ -29,11 +29,17 @@ async function createTemplateAction(formData: FormData) {
   const channelType = String(formData.get("channelType") ?? "whatsapp") as
     | "whatsapp"
     | "email";
+  const requestedProvider = optionalMessagingProvider(formData.get("provider"));
   await createAiMessageTemplate({
     tenantId: String(formData.get("tenantId") ?? ""),
     name: String(formData.get("name") ?? ""),
     channelType,
-    provider: channelType === "whatsapp" ? "twilio" : "brevo",
+    provider:
+      channelType === "email"
+        ? "brevo"
+        : requestedProvider === "sent_dm"
+          ? "sent_dm"
+          : "twilio",
     providerTemplateId: optionalString(formData.get("providerTemplateId")),
     subject: optionalString(formData.get("subject")),
     body: String(formData.get("body") ?? ""),
@@ -77,6 +83,13 @@ function optionalString(value: FormDataEntryValue | null) {
 function optionalChannelType(value: FormDataEntryValue | null) {
   const text = optionalString(value);
   return text === "whatsapp" || text === "email" ? text : undefined;
+}
+
+function optionalMessagingProvider(value: FormDataEntryValue | null) {
+  const text = optionalString(value);
+  return text === "twilio" || text === "sent_dm" || text === "brevo"
+    ? text
+    : undefined;
 }
 
 export default async function AiCampaignsRoute({
@@ -124,7 +137,7 @@ export default async function AiCampaignsRoute({
                     name="tenantId"
                     value={selectedTenant.id}
                   />
-                  <div className="grid gap-3 md:grid-cols-3">
+                  <div className="grid gap-3 md:grid-cols-4">
                     <Field label="Name">
                       <Input
                         name="name"
@@ -138,10 +151,17 @@ export default async function AiCampaignsRoute({
                         <option value="email">Email</option>
                       </Select>
                     </Field>
+                    <Field label="Provider">
+                      <Select name="provider" defaultValue="twilio">
+                        <option value="twilio">Twilio</option>
+                        <option value="sent_dm">Sent.dm</option>
+                        <option value="brevo">Brevo</option>
+                      </Select>
+                    </Field>
                     <Field label="Provider template">
                       <Input
                         name="providerTemplateId"
-                        placeholder="Twilio ContentSid or Brevo ID"
+                        placeholder="Twilio, Sent.dm, or Brevo ID"
                       />
                     </Field>
                   </div>

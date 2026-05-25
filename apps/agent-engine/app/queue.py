@@ -177,14 +177,17 @@ async def mark_failed(conn: asyncpg.Connection, message_id: str, error: str) -> 
 async def claim_next_manual_message(
     conn: asyncpg.Connection,
     lease_seconds: int,
-) -> asyncpg.Record | None:
+) -> dict | None:
     async with conn.transaction():
         row = await conn.fetchrow(
             """
-            SELECT m.*
+            SELECT m.*,
+                   COALESCE(t.provider, ch.provider, 'twilio') AS provider
             FROM ai_manual_messages m
             LEFT JOIN ai_campaign_recipients r ON r.manual_message_id = m.id
             LEFT JOIN ai_campaigns c ON c.id = r.campaign_id
+            LEFT JOIN ai_message_templates t ON t.id = c.template_id
+            LEFT JOIN ai_channels ch ON ch.id = m.channel_id AND ch.tenant_id = m.tenant_id
             WHERE (
                 m.delivery_status = 'queued'
                 OR (
@@ -201,7 +204,7 @@ async def claim_next_manual_message(
         )
         if not row:
             return None
-        return await conn.fetchrow(
+        updated = await conn.fetchrow(
             """
             UPDATE ai_manual_messages
             SET delivery_status = 'processing',
@@ -213,6 +216,7 @@ async def claim_next_manual_message(
             row["id"],
             lease_seconds,
         )
+        return {**dict(row), **dict(updated)}
 
 
 async def mark_manual_sent(conn: asyncpg.Connection, manual_message_id: str, provider_sid: str) -> None:

@@ -55,6 +55,9 @@ async def test_manual_messages_respect_campaign_schedule_before_claiming():
     query = conn.fetchrow_calls[0][0]
     assert "LEFT JOIN ai_campaign_recipients r ON r.manual_message_id = m.id" in query
     assert "LEFT JOIN ai_campaigns c ON c.id = r.campaign_id" in query
+    assert "LEFT JOIN ai_message_templates t ON t.id = c.template_id" in query
+    assert "LEFT JOIN ai_channels ch ON ch.id = m.channel_id" in query
+    assert "COALESCE(t.provider, ch.provider, 'twilio') AS provider" in query
     assert "c.scheduled_at IS NULL OR c.scheduled_at <= NOW()" in query
     assert "FOR UPDATE OF m SKIP LOCKED" in query
 

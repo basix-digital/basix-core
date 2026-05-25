@@ -40,6 +40,7 @@ const allowedKeys = {
     "api_key_sid",
     "api_key_secret",
   ]),
+  sent_dm: new Set(["api_key"]),
 } as const;
 
 @Injectable()

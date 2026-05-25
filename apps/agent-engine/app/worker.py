@@ -5,7 +5,12 @@ import structlog
 from .agent import run_agent
 from .crm import create_activity
 from .db import connection, open_pool
-from .messaging_adapters import BrevoEmailAdapter, EmailMessage
+from .messaging_adapters import (
+    BrevoEmailAdapter,
+    EmailMessage,
+    SentDmWhatsAppAdapter,
+    WhatsAppMessage,
+)
 from .phone import build_user_id
 from .provider_credentials import resolve_provider_credentials
 from .queue import (
@@ -26,6 +31,7 @@ logger = structlog.get_logger()
 
 TWILIO_KEYS = ["account_sid", "auth_token", "api_key_sid", "api_key_secret"]
 BREVO_KEYS = ["api_key", "sender_email", "sender_name"]
+SENT_DM_KEYS = ["api_key"]
 
 
 async def process_once() -> bool:
@@ -114,30 +120,14 @@ async def process_manual_once(conn) -> bool:
         )
         if not channel:
             raise RuntimeError("channel not found for manual message")
-        twilio_credentials = await resolve_provider_credentials(
+        provider = manual["provider"] or "twilio"
+        provider_message_id = await send_manual_whatsapp(
             conn,
-            tenant_id=manual["tenant_id"],
-            provider="twilio",
-            keys=TWILIO_KEYS,
-            scope_id=manual["channel_id"],
-            required=False,
+            manual=manual,
+            channel_phone_number=channel["phone_number"],
+            provider=provider,
         )
-        if manual["provider_template_id"]:
-            provider_variables = as_dict(manual["provider_variables"])
-            sid = await TwilioClient(twilio_credentials).send_template_message(
-                from_number=channel["phone_number"],
-                to_number=manual["phone_number"],
-                body=manual["body"],
-                content_sid=manual["provider_template_id"],
-                content_variables=provider_variables,
-            )
-        else:
-            sid = await TwilioClient(twilio_credentials).send_message(
-                from_number=channel["phone_number"],
-                to_number=manual["phone_number"],
-                body=manual["body"],
-            )
-        await mark_manual_sent(conn, manual["id"], sid)
+        await mark_manual_sent(conn, manual["id"], provider_message_id)
         await create_activity(
             conn,
             tenant_id=manual["tenant_id"],
@@ -147,7 +137,13 @@ async def process_manual_once(conn) -> bool:
             direction="outbound",
             title="Manual WhatsApp message delivered",
             body=manual["body"],
-            metadata=json.dumps({"twilioSid": sid, "manualMessageId": manual["id"]}),
+            metadata=json.dumps(
+                manual_delivery_metadata(
+                    provider,
+                    provider_message_id,
+                    manual["id"],
+                )
+            ),
         )
         return True
     except Exception as exc:
@@ -213,6 +209,77 @@ def as_dict(value) -> dict[str, str]:
     else:
         decoded = value
     return {str(key): "" if item is None else str(item) for key, item in dict(decoded).items()}
+
+
+async def send_manual_whatsapp(
+    conn,
+    *,
+    manual,
+    channel_phone_number: str,
+    provider: str,
+) -> str:
+    provider_variables = as_dict(manual["provider_variables"])
+    if provider == "twilio":
+        twilio_credentials = await resolve_provider_credentials(
+            conn,
+            tenant_id=manual["tenant_id"],
+            provider="twilio",
+            keys=TWILIO_KEYS,
+            scope_id=manual["channel_id"],
+            required=False,
+        )
+        if manual["provider_template_id"]:
+            return await TwilioClient(twilio_credentials).send_template_message(
+                from_number=channel_phone_number,
+                to_number=manual["phone_number"],
+                body=manual["body"],
+                content_sid=manual["provider_template_id"],
+                content_variables=provider_variables,
+            )
+
+        return await TwilioClient(twilio_credentials).send_message(
+            from_number=channel_phone_number,
+            to_number=manual["phone_number"],
+            body=manual["body"],
+        )
+
+    if provider == "sent_dm":
+        sent_dm_credentials = await resolve_provider_credentials(
+            conn,
+            tenant_id=manual["tenant_id"],
+            provider="sent_dm",
+            keys=SENT_DM_KEYS,
+            scope_id=manual["channel_id"],
+            required=False,
+        )
+        return await SentDmWhatsAppAdapter(sent_dm_credentials).send(
+            WhatsAppMessage(
+                from_number=channel_phone_number,
+                to_number=manual["phone_number"],
+                body=manual["body"],
+                content_sid=manual["provider_template_id"],
+                content_variables=provider_variables,
+            )
+        )
+
+    raise RuntimeError(f"unsupported WhatsApp provider: {provider}")
+
+
+def manual_delivery_metadata(
+    provider: str,
+    provider_message_id: str,
+    manual_message_id: str,
+) -> dict[str, str]:
+    metadata = {
+        "provider": provider,
+        "providerMessageId": provider_message_id,
+        "manualMessageId": manual_message_id,
+    }
+    if provider == "twilio":
+        metadata["twilioSid"] = provider_message_id
+    if provider == "sent_dm":
+        metadata["sentDmMessageId"] = provider_message_id
+    return metadata
 
 
 async def main() -> None:

@@ -104,5 +104,8 @@ def read_env_fallback(provider: str, key: str) -> str:
             "api_key_sid": settings.twilio_api_key_sid,
             "api_key_secret": settings.twilio_api_key_secret,
         },
+        "sent_dm": {
+            "api_key": settings.sent_dm_api_key or settings.sent_api_key,
+        },
     }
     return values.get(provider, {}).get(key, "")

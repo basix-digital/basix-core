@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     twilio_account_sid: str = Field(default="", alias="TWILIO_ACCOUNT_SID")
     twilio_api_key_sid: str = Field(default="", alias="TWILIO_API_KEY_SID")
     twilio_api_key_secret: str = Field(default="", alias="TWILIO_API_KEY_SECRET")
+    sent_dm_api_key: str = Field(default="", alias="SENT_DM_API_KEY")
+    sent_api_key: str = Field(default="", alias="SENT_API_KEY")
+    sent_dm_base_url: str = Field(
+        default="https://api.sent.dm/v3",
+        alias="SENT_DM_BASE_URL",
+    )
     worker_poll_seconds: float = Field(default=1.0, alias="AI_WORKER_POLL_SECONDS")
     worker_lease_seconds: int = Field(default=120, alias="AI_WORKER_LEASE_SECONDS")
 

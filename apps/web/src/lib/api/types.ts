@@ -367,7 +367,7 @@ export interface AiMessageTemplate {
   tenantId: string;
   name: string;
   channelType: "whatsapp" | "email";
-  provider: "brevo" | "twilio";
+  provider: "brevo" | "twilio" | "sent_dm";
   providerTemplateId: string | null;
   subject: string | null;
   body: string;

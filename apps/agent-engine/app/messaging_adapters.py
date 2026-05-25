@@ -114,3 +114,65 @@ class TwilioWhatsAppAdapter:
             response.raise_for_status()
             payload = response.json()
             return str(payload.get("sid", ""))
+
+
+class SentDmWhatsAppAdapter:
+    def __init__(self, credentials: dict[str, str]) -> None:
+        self.credentials = credentials
+
+    async def send(self, message: WhatsAppMessage) -> str:
+        api_key = self.credentials.get("api_key", "")
+        if not api_key:
+            raise RuntimeError("SENT_DM_API_KEY is required")
+        if not message.content_sid:
+            raise RuntimeError("Sent.dm WhatsApp delivery requires a provider template id")
+
+        template: dict[str, object] = {"id": message.content_sid}
+        if message.content_variables:
+            template["parameters"] = message.content_variables
+
+        payload = {
+            "to": [message.to_number],
+            "template": template,
+            "channel": ["whatsapp"],
+        }
+
+        async with httpx.AsyncClient(timeout=20) as client:
+            response = await client.post(
+                f"{settings.sent_dm_base_url.rstrip('/')}/messages",
+                headers={
+                    "x-api-key": api_key,
+                    "content-type": "application/json",
+                },
+                json=payload,
+            )
+            response_data = self.decode_response(response)
+            if response.status_code >= 400 or response_data.get("success") is False:
+                raise RuntimeError(self.format_error(response, response_data))
+
+            data = response_data.get("data")
+            recipients = data.get("recipients", []) if isinstance(data, dict) else []
+            first_recipient = recipients[0] if recipients else {}
+            return str(first_recipient.get("message_id", ""))
+
+    def decode_response(self, response: httpx.Response) -> dict[str, object]:
+        try:
+            data = response.json()
+        except ValueError:
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    def format_error(
+        self,
+        response: httpx.Response,
+        data: dict[str, object],
+    ) -> str:
+        error = data.get("error")
+        if isinstance(error, dict):
+            code = error.get("code")
+            message = error.get("message")
+            if code and message:
+                return f"Sent.dm message failed ({code}): {message}"
+            if message:
+                return f"Sent.dm message failed: {message}"
+        return f"Sent.dm message failed with HTTP {response.status_code}"

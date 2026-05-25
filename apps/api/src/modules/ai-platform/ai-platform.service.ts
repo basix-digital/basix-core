@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -104,6 +105,17 @@ const campaignSelect = {
   _count: { select: { recipients: true } },
 } as const;
 
+export type AiPlatformActor =
+  | { type: "admin"; userId: string }
+  | {
+      type: "apiToken";
+      tenantId: string;
+      appId: string;
+      apiTokenId: string;
+    };
+
+export type AiPlatformActorInput = string | AiPlatformActor;
+
 @Injectable()
 export class AiPlatformService {
   constructor(
@@ -113,8 +125,11 @@ export class AiPlatformService {
     private readonly secretCipher: SecretCipherService,
   ) {}
 
-  async listContacts(userId: string, query: ListContactsQueryDto) {
-    await this.assertTenantOperational(userId, query.tenantId);
+  async listContacts(
+    actorInput: AiPlatformActorInput,
+    query: ListContactsQueryDto,
+  ) {
+    await this.assertTenantOperational(actorInput, query.tenantId);
     const where: Prisma.CrmContactWhereInput = {
       tenantId: query.tenantId,
       ...(query.status ? { status: query.status } : {}),
@@ -143,8 +158,12 @@ export class AiPlatformService {
     return { data, total };
   }
 
-  async createContact(userId: string, data: CreateContactDto) {
-    await this.assertTenantOperational(userId, data.tenantId);
+  async createContact(
+    actorInput: AiPlatformActorInput,
+    data: CreateContactDto,
+  ) {
+    const actor = this.normalizeActor(actorInput);
+    await this.assertTenantOperational(actor, data.tenantId);
     const phone = this.normalizeE164(data.phone);
 
     try {
@@ -178,7 +197,7 @@ export class AiPlatformService {
             contactId: contact.id,
             pipelineId: pipeline.id,
             stageId: stage.id,
-            actorUserId: userId,
+            actorUserId: this.actorUserId(actor),
             type: "manual_contact_created",
             title: "Contact created",
             metadata: { source: contact.source },
@@ -186,7 +205,7 @@ export class AiPlatformService {
           await this.audit(
             tx,
             data.tenantId,
-            userId,
+            actor,
             "crm.contact.create",
             "CrmContact",
             contact.id,
@@ -203,11 +222,12 @@ export class AiPlatformService {
   }
 
   async updateContact(
-    userId: string,
+    actorInput: AiPlatformActorInput,
     contactId: string,
     data: UpdateContactDto,
   ) {
-    await this.assertTenantOperational(userId, data.tenantId);
+    const actor = this.normalizeActor(actorInput);
+    await this.assertTenantOperational(actor, data.tenantId);
     await this.assertContact(data.tenantId, contactId);
 
     const contact = await this.prisma.crmContact.update({
@@ -226,22 +246,24 @@ export class AiPlatformService {
       select: contactSelect,
     });
 
-    await this.prisma.auditLog.create({
-      data: {
-        tenantId: data.tenantId,
-        actorUserId: userId,
-        action: "crm.contact.update",
-        entity: "CrmContact",
-        entityId: contact.id,
-        metadata: { status: contact.status, stageId: contact.stageId },
-      },
-    });
+    await this.audit(
+      this.prisma,
+      data.tenantId,
+      actor,
+      "crm.contact.update",
+      "CrmContact",
+      contact.id,
+      { status: contact.status, stageId: contact.stageId },
+    );
 
     return contact;
   }
 
-  async listPipelines(userId: string, query: TenantScopedQueryDto) {
-    await this.assertTenantOperational(userId, query.tenantId);
+  async listPipelines(
+    actorInput: AiPlatformActorInput,
+    query: TenantScopedQueryDto,
+  ) {
+    await this.assertTenantOperational(actorInput, query.tenantId);
     await this.ensureDefaultPipeline(this.prisma, query.tenantId);
 
     return this.prisma.crmPipeline.findMany({
@@ -255,8 +277,11 @@ export class AiPlatformService {
     });
   }
 
-  async listActivities(userId: string, query: PaginatedTenantQueryDto) {
-    await this.assertTenantOperational(userId, query.tenantId);
+  async listActivities(
+    actorInput: AiPlatformActorInput,
+    query: PaginatedTenantQueryDto,
+  ) {
+    await this.assertTenantOperational(actorInput, query.tenantId);
     return this.prisma.crmActivity.findMany({
       where: { tenantId: query.tenantId },
       orderBy: { occurredAt: "desc" },
@@ -280,8 +305,11 @@ export class AiPlatformService {
     });
   }
 
-  async listChannels(userId: string, query: TenantScopedQueryDto) {
-    await this.assertTenantOperational(userId, query.tenantId);
+  async listChannels(
+    actorInput: AiPlatformActorInput,
+    query: TenantScopedQueryDto,
+  ) {
+    await this.assertTenantOperational(actorInput, query.tenantId);
     return this.prisma.aiChannel.findMany({
       where: { tenantId: query.tenantId },
       orderBy: { createdAt: "desc" },
@@ -289,8 +317,12 @@ export class AiPlatformService {
     });
   }
 
-  async createChannel(userId: string, data: CreateChannelDto) {
-    await this.assertTenantOperational(userId, data.tenantId);
+  async createChannel(
+    actorInput: AiPlatformActorInput,
+    data: CreateChannelDto,
+  ) {
+    const actor = this.normalizeActor(actorInput);
+    await this.assertTenantOperational(actor, data.tenantId);
     this.assertKnownAgent(data.agentIdDefault);
     const phoneNumber = this.normalizeWhatsappAddress(data.phoneNumber);
     const encryptedSecrets =
@@ -315,7 +347,7 @@ export class AiPlatformService {
           await this.audit(
             tx,
             data.tenantId,
-            userId,
+            actor,
             "ai.channel.create",
             "AiChannel",
             channel.id,
@@ -334,11 +366,12 @@ export class AiPlatformService {
   }
 
   async updateChannel(
-    userId: string,
+    actorInput: AiPlatformActorInput,
     channelId: string,
     data: UpdateChannelDto,
   ) {
-    await this.assertTenantOperational(userId, data.tenantId);
+    const actor = this.normalizeActor(actorInput);
+    await this.assertTenantOperational(actor, data.tenantId);
 
     if (data.agentIdDefault) {
       this.assertKnownAgent(data.agentIdDefault);
@@ -389,7 +422,7 @@ export class AiPlatformService {
           await this.audit(
             tx,
             data.tenantId,
-            userId,
+            actor,
             "ai.channel.update",
             "AiChannel",
             channel.id,
@@ -411,8 +444,8 @@ export class AiPlatformService {
     }
   }
 
-  async listChats(userId: string, query: ChatListQueryDto) {
-    await this.assertTenantOperational(userId, query.tenantId);
+  async listChats(actorInput: AiPlatformActorInput, query: ChatListQueryDto) {
+    await this.assertTenantOperational(actorInput, query.tenantId);
     const where: Prisma.AiConversationWhereInput = {
       tenantId: query.tenantId,
       ...(query.channelId ? { channelId: query.channelId } : {}),
@@ -446,8 +479,8 @@ export class AiPlatformService {
     return { data, total };
   }
 
-  async listQueue(userId: string, query: QueueListQueryDto) {
-    await this.assertTenantOperational(userId, query.tenantId);
+  async listQueue(actorInput: AiPlatformActorInput, query: QueueListQueryDto) {
+    await this.assertTenantOperational(actorInput, query.tenantId);
     const where: Prisma.AiMessageQueueWhereInput = {
       tenantId: query.tenantId,
       ...(query.status ? { status: query.status } : {}),
@@ -483,8 +516,12 @@ export class AiPlatformService {
     return { data, total };
   }
 
-  async getChat(userId: string, phone: string, query: ChatQueryDto) {
-    await this.assertTenantOperational(userId, query.tenantId);
+  async getChat(
+    actorInput: AiPlatformActorInput,
+    phone: string,
+    query: ChatQueryDto,
+  ) {
+    await this.assertTenantOperational(actorInput, query.tenantId);
     const conversation = await this.getConversationByPhone(
       query.tenantId,
       phone,
@@ -515,8 +552,13 @@ export class AiPlatformService {
     return { conversation, queue, manualMessages, activities };
   }
 
-  async takeoverChat(userId: string, phone: string, data: TakeoverDto) {
-    await this.assertTenantOperational(userId, data.tenantId);
+  async takeoverChat(
+    actorInput: AiPlatformActorInput,
+    phone: string,
+    data: TakeoverDto,
+  ) {
+    const actor = this.normalizeActor(actorInput);
+    await this.assertTenantOperational(actor, data.tenantId);
     const conversation = await this.getConversationByPhone(
       data.tenantId,
       phone,
@@ -527,7 +569,7 @@ export class AiPlatformService {
         where: { id: conversation.id },
         data: {
           mode: "human",
-          takenOverByUserId: userId,
+          takenOverByUserId: this.actorUserId(actor),
           takenOverAt: new Date(),
           releasedAt: null,
         },
@@ -540,7 +582,7 @@ export class AiPlatformService {
         pipelineId: updated.crmContact?.pipelineId,
         stageId: updated.crmContact?.stageId,
         channelId: updated.channelId,
-        actorUserId: userId,
+        actorUserId: this.actorUserId(actor),
         type: "takeover",
         title: "Human takeover",
         metadata: { conversationId: updated.id },
@@ -548,7 +590,7 @@ export class AiPlatformService {
       await this.audit(
         tx,
         data.tenantId,
-        userId,
+        actor,
         "ai.chat.takeover",
         "AiConversation",
         updated.id,
@@ -557,8 +599,13 @@ export class AiPlatformService {
     });
   }
 
-  async releaseChat(userId: string, phone: string, data: TakeoverDto) {
-    await this.assertTenantOperational(userId, data.tenantId);
+  async releaseChat(
+    actorInput: AiPlatformActorInput,
+    phone: string,
+    data: TakeoverDto,
+  ) {
+    const actor = this.normalizeActor(actorInput);
+    await this.assertTenantOperational(actor, data.tenantId);
     const conversation = await this.getConversationByPhone(
       data.tenantId,
       phone,
@@ -581,7 +628,7 @@ export class AiPlatformService {
         pipelineId: updated.crmContact?.pipelineId,
         stageId: updated.crmContact?.stageId,
         channelId: updated.channelId,
-        actorUserId: userId,
+        actorUserId: this.actorUserId(actor),
         type: "release_to_ai",
         title: "Released to AI",
         metadata: { conversationId: updated.id },
@@ -589,7 +636,7 @@ export class AiPlatformService {
       await this.audit(
         tx,
         data.tenantId,
-        userId,
+        actor,
         "ai.chat.release",
         "AiConversation",
         updated.id,
@@ -599,11 +646,12 @@ export class AiPlatformService {
   }
 
   async sendManualMessage(
-    userId: string,
+    actorInput: AiPlatformActorInput,
     phone: string,
     data: ManualMessageDto,
   ) {
-    await this.assertTenantOperational(userId, data.tenantId);
+    const actor = this.normalizeActor(actorInput);
+    await this.assertTenantOperational(actor, data.tenantId);
     if (!data.body.trim()) {
       throw new BadRequestException("Message body is required");
     }
@@ -627,7 +675,7 @@ export class AiPlatformService {
           crmContactId: conversation.crmContactId,
           phoneNumber: conversation.phoneNumber,
           agentId: conversation.agentId,
-          senderUserId: userId,
+          senderUserId: this.actorUserId(actor),
           body: data.body.trim(),
         },
       });
@@ -647,7 +695,7 @@ export class AiPlatformService {
         pipelineId: conversation.crmContact?.pipelineId,
         stageId: conversation.crmContact?.stageId,
         channelId: conversation.channelId,
-        actorUserId: userId,
+        actorUserId: this.actorUserId(actor),
         type: "message_sent",
         direction: "outbound",
         title: "Manual message sent",
@@ -657,7 +705,7 @@ export class AiPlatformService {
       await this.audit(
         tx,
         data.tenantId,
-        userId,
+        actor,
         "ai.chat.manual_message",
         "AiManualMessage",
         manual.id,
@@ -666,8 +714,11 @@ export class AiPlatformService {
     });
   }
 
-  async listAgents(userId: string, query: TenantScopedQueryDto) {
-    await this.assertTenantOperational(userId, query.tenantId);
+  async listAgents(
+    actorInput: AiPlatformActorInput,
+    query: TenantScopedQueryDto,
+  ) {
+    await this.assertTenantOperational(actorInput, query.tenantId);
     const settings = await this.prisma.aiAgentLlmSetting.findMany({
       where: { tenantId: query.tenantId },
     });
@@ -681,12 +732,14 @@ export class AiPlatformService {
   }
 
   async upsertAgentSettings(
-    userId: string,
+    actorInput: AiPlatformActorInput,
     agentId: string,
     data: AgentSettingsDto,
   ) {
-    await this.assertTenantOperational(userId, data.tenantId);
+    const actor = this.normalizeActor(actorInput);
+    await this.assertTenantOperational(actor, data.tenantId);
     this.assertKnownAgent(agentId);
+    const actorReference = this.actorReference(actor);
 
     const settings = await this.prisma.aiAgentLlmSetting.upsert({
       where: {
@@ -702,7 +755,7 @@ export class AiPlatformService {
         temperature: data.temperature,
         topP: data.topP,
         topK: data.topK,
-        updatedBy: userId,
+        updatedBy: actorReference,
       },
       create: {
         tenantId: data.tenantId,
@@ -713,30 +766,32 @@ export class AiPlatformService {
         temperature: data.temperature,
         topP: data.topP,
         topK: data.topK,
-        createdBy: userId,
-        updatedBy: userId,
+        createdBy: actorReference,
+        updatedBy: actorReference,
       },
     });
 
-    await this.prisma.auditLog.create({
-      data: {
-        tenantId: data.tenantId,
-        actorUserId: userId,
-        action: "ai.agent_llm_settings.upsert",
-        entity: "AiAgentLlmSetting",
-        entityId: settings.id,
-        metadata: {
-          agentId,
-          provider: settings.provider,
-          model: settings.model,
-        },
+    await this.audit(
+      this.prisma,
+      data.tenantId,
+      actor,
+      "ai.agent_llm_settings.upsert",
+      "AiAgentLlmSetting",
+      settings.id,
+      {
+        agentId,
+        provider: settings.provider,
+        model: settings.model,
       },
-    });
+    );
     return settings;
   }
 
-  async listPlaybooks(userId: string, query: TenantScopedQueryDto) {
-    await this.assertTenantOperational(userId, query.tenantId);
+  async listPlaybooks(
+    actorInput: AiPlatformActorInput,
+    query: TenantScopedQueryDto,
+  ) {
+    await this.assertTenantOperational(actorInput, query.tenantId);
     return this.prisma.aiPlaybook.findMany({
       where: { tenantId: query.tenantId },
       orderBy: { updatedAt: "desc" },
@@ -750,8 +805,13 @@ export class AiPlatformService {
     });
   }
 
-  async createPlaybook(userId: string, data: CreatePlaybookDto) {
-    await this.assertTenantOperational(userId, data.tenantId);
+  async createPlaybook(
+    actorInput: AiPlatformActorInput,
+    data: CreatePlaybookDto,
+  ) {
+    const actor = this.normalizeActor(actorInput);
+    await this.assertTenantOperational(actor, data.tenantId);
+    const actorReference = this.actorReference(actor);
 
     return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const playbook = await tx.aiPlaybook.create({
@@ -762,7 +822,7 @@ export class AiPlatformService {
           category: data.category.trim(),
           status: "draft",
           isGlobalTemplate: data.isGlobalTemplate ?? false,
-          createdBy: userId,
+          createdBy: actorReference,
         },
       });
 
@@ -784,7 +844,7 @@ export class AiPlatformService {
           priority: data.priority ?? 5,
           tags: data.tags ?? [],
           minScore: data.minScore ?? 0,
-          createdBy: userId,
+          createdBy: actorReference,
           searchText: [
             data.title,
             data.category,
@@ -804,7 +864,7 @@ export class AiPlatformService {
       await this.audit(
         tx,
         data.tenantId,
-        userId,
+        actor,
         "ai.playbook.create",
         "AiPlaybook",
         playbook.id,
@@ -814,11 +874,13 @@ export class AiPlatformService {
   }
 
   async updatePlaybook(
-    userId: string,
+    actorInput: AiPlatformActorInput,
     playbookId: string,
     data: UpdatePlaybookDto,
   ) {
-    await this.assertTenantOperational(userId, data.tenantId);
+    const actor = this.normalizeActor(actorInput);
+    await this.assertTenantOperational(actor, data.tenantId);
+    const actorReference = this.actorReference(actor);
 
     return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const playbook = await tx.aiPlaybook.findFirst({
@@ -865,7 +927,7 @@ export class AiPlatformService {
             playbookId: playbook.id,
             version: latest.version + 1,
             parentVersion: latest.version,
-            createdBy: userId,
+            createdBy: actorReference,
             ...versionData,
             searchText: this.buildPlaybookSearchText(versionData),
           },
@@ -876,7 +938,7 @@ export class AiPlatformService {
           where: { id: latest.id },
           data: {
             status: data.status,
-            reviewedBy: data.status === "active" ? userId : undefined,
+            reviewedBy: data.status === "active" ? actorReference : undefined,
             approvedAt: data.status === "active" ? new Date() : undefined,
           },
         });
@@ -890,7 +952,7 @@ export class AiPlatformService {
           category: data.category?.trim() || playbook.category,
           status: data.status || playbook.status,
           currentVersionId,
-          reviewedBy: data.status === "active" ? userId : undefined,
+          reviewedBy: data.status === "active" ? actorReference : undefined,
           approvedAt: data.status === "active" ? new Date() : undefined,
         },
         include: {
@@ -905,7 +967,7 @@ export class AiPlatformService {
       await this.audit(
         tx,
         data.tenantId,
-        userId,
+        actor,
         "ai.playbook.update",
         "AiPlaybook",
         playbook.id,
@@ -917,12 +979,14 @@ export class AiPlatformService {
   }
 
   async assignPlaybook(
-    userId: string,
+    actorInput: AiPlatformActorInput,
     playbookId: string,
     data: AssignPlaybookDto,
   ) {
-    await this.assertTenantOperational(userId, data.tenantId);
+    const actor = this.normalizeActor(actorInput);
+    await this.assertTenantOperational(actor, data.tenantId);
     this.assertKnownAgent(data.agentId);
+    const actorReference = this.actorReference(actor);
 
     return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const playbook = await tx.aiPlaybook.findFirst({
@@ -989,7 +1053,7 @@ export class AiPlatformService {
           isActive,
           priorityOverride: data.priorityOverride,
           minScoreOverride: data.minScoreOverride,
-          activatedBy: isActive ? userId : undefined,
+          activatedBy: isActive ? actorReference : undefined,
           activatedAt: isActive ? new Date() : undefined,
           disabledAt: isEnabled ? null : new Date(),
         },
@@ -1002,7 +1066,7 @@ export class AiPlatformService {
           isActive,
           priorityOverride: data.priorityOverride,
           minScoreOverride: data.minScoreOverride,
-          activatedBy: isActive ? userId : null,
+          activatedBy: isActive ? actorReference : null,
           activatedAt: isActive ? new Date() : null,
           disabledAt: isEnabled ? null : new Date(),
         },
@@ -1015,7 +1079,7 @@ export class AiPlatformService {
       await this.audit(
         tx,
         data.tenantId,
-        userId,
+        actor,
         "ai.playbook.assign",
         "AiAgentPlaybookAssignment",
         assignment.id,
@@ -1032,10 +1096,10 @@ export class AiPlatformService {
   }
 
   async listMessageTemplates(
-    userId: string,
+    actorInput: AiPlatformActorInput,
     query: ListMessageTemplatesQueryDto,
   ) {
-    await this.assertTenantOperational(userId, query.tenantId);
+    await this.assertTenantOperational(actorInput, query.tenantId);
 
     return this.prisma.aiMessageTemplate.findMany({
       where: {
@@ -1048,8 +1112,13 @@ export class AiPlatformService {
     });
   }
 
-  async createMessageTemplate(userId: string, data: CreateMessageTemplateDto) {
-    await this.assertTenantOperational(userId, data.tenantId);
+  async createMessageTemplate(
+    actorInput: AiPlatformActorInput,
+    data: CreateMessageTemplateDto,
+  ) {
+    const actor = this.normalizeActor(actorInput);
+    await this.assertTenantOperational(actor, data.tenantId);
+    const actorReference = this.actorReference(actor);
     const provider =
       data.provider ?? this.defaultMessagingProvider(data.channelType);
     this.assertTemplateProvider(
@@ -1082,8 +1151,8 @@ export class AiPlatformService {
               subject,
               body,
               variables,
-              createdBy: userId,
-              updatedBy: userId,
+              createdBy: actorReference,
+              updatedBy: actorReference,
             },
             select: templateSelect,
           });
@@ -1091,7 +1160,7 @@ export class AiPlatformService {
           await this.audit(
             tx,
             data.tenantId,
-            userId,
+            actor,
             "ai.message_template.create",
             "AiMessageTemplate",
             template.id,
@@ -1114,11 +1183,13 @@ export class AiPlatformService {
   }
 
   async updateMessageTemplate(
-    userId: string,
+    actorInput: AiPlatformActorInput,
     templateId: string,
     data: UpdateMessageTemplateDto,
   ) {
-    await this.assertTenantOperational(userId, data.tenantId);
+    const actor = this.normalizeActor(actorInput);
+    await this.assertTenantOperational(actor, data.tenantId);
+    const actorReference = this.actorReference(actor);
 
     try {
       return await this.prisma.$transaction(
@@ -1169,7 +1240,7 @@ export class AiPlatformService {
                   ? { variables: this.extractTemplateVariables(subject, body) }
                   : {}),
               ...(data.status !== undefined ? { status: data.status } : {}),
-              updatedBy: userId,
+              updatedBy: actorReference,
             },
             select: templateSelect,
           });
@@ -1177,7 +1248,7 @@ export class AiPlatformService {
           await this.audit(
             tx,
             data.tenantId,
-            userId,
+            actor,
             "ai.message_template.update",
             "AiMessageTemplate",
             template.id,
@@ -1199,8 +1270,11 @@ export class AiPlatformService {
     }
   }
 
-  async listCampaigns(userId: string, query: ListCampaignsQueryDto) {
-    await this.assertTenantOperational(userId, query.tenantId);
+  async listCampaigns(
+    actorInput: AiPlatformActorInput,
+    query: ListCampaignsQueryDto,
+  ) {
+    await this.assertTenantOperational(actorInput, query.tenantId);
     const where: Prisma.AiCampaignWhereInput = {
       tenantId: query.tenantId,
       ...(query.status ? { status: query.status } : {}),
@@ -1221,10 +1295,14 @@ export class AiPlatformService {
     return { data, total };
   }
 
-  async createCampaign(userId: string, data: CreateCampaignDto) {
-    await this.assertTenantOperational(userId, data.tenantId);
+  async createCampaign(
+    actorInput: AiPlatformActorInput,
+    data: CreateCampaignDto,
+  ) {
+    const actor = this.normalizeActor(actorInput);
+    await this.assertTenantOperational(actor, data.tenantId);
 
-    return this.createCampaignWithRecipients(userId, {
+    return this.createCampaignWithRecipients(actor, {
       tenantId: data.tenantId,
       templateId: data.templateId,
       name: data.name,
@@ -1237,10 +1315,14 @@ export class AiPlatformService {
     });
   }
 
-  async sendNotification(userId: string, data: SendNotificationDto) {
-    await this.assertTenantOperational(userId, data.tenantId);
+  async sendNotification(
+    actorInput: AiPlatformActorInput,
+    data: SendNotificationDto,
+  ) {
+    const actor = this.normalizeActor(actorInput);
+    await this.assertTenantOperational(actor, data.tenantId);
 
-    return this.createCampaignWithRecipients(userId, {
+    return this.createCampaignWithRecipients(actor, {
       tenantId: data.tenantId,
       templateId: data.templateId,
       name: "Manual notification",
@@ -1257,8 +1339,11 @@ export class AiPlatformService {
     });
   }
 
-  async getMetrics(userId: string, query: TenantScopedQueryDto) {
-    await this.assertTenantOperational(userId, query.tenantId);
+  async getMetrics(
+    actorInput: AiPlatformActorInput,
+    query: TenantScopedQueryDto,
+  ) {
+    await this.assertTenantOperational(actorInput, query.tenantId);
     const [
       contacts,
       channels,
@@ -1299,7 +1384,7 @@ export class AiPlatformService {
   }
 
   private async createCampaignWithRecipients(
-    userId: string,
+    actor: AiPlatformActor,
     data: {
       tenantId: string;
       templateId: string;
@@ -1361,7 +1446,7 @@ export class AiPlatformService {
           status: "queued",
           scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : null,
           audienceFilter: this.buildAudienceFilter(data),
-          createdBy: userId,
+          createdBy: this.actorReference(actor),
         },
       });
 
@@ -1432,7 +1517,7 @@ export class AiPlatformService {
               crmContactId: recipient.contactId,
               phoneNumber: recipient.phoneNumber,
               agentId: channel.agentIdDefault,
-              senderUserId: userId,
+              senderUserId: this.actorUserId(actor),
               body: recipient.renderedBody,
               providerTemplateId: template.providerTemplateId,
               providerVariables: recipient.providerVariables,
@@ -1462,7 +1547,7 @@ export class AiPlatformService {
           tenantId: data.tenantId,
           contactId: recipient.contactId,
           channelId: channel?.id ?? null,
-          actorUserId: userId,
+          actorUserId: this.actorUserId(actor),
           type:
             channelType === "whatsapp"
               ? "whatsapp_campaign_queued"
@@ -1492,7 +1577,7 @@ export class AiPlatformService {
       await this.audit(
         tx,
         data.tenantId,
-        userId,
+        actor,
         "ai.campaign.create",
         "AiCampaign",
         campaign.id,
@@ -1599,6 +1684,7 @@ export class AiPlatformService {
 
   private buildCampaignRecipients(input: {
     template: {
+      provider: string;
       subject: string | null;
       body: string;
       variables: string[];
@@ -1650,6 +1736,7 @@ export class AiPlatformService {
         renderedBody,
         providerVariables: this.buildProviderVariables(
           input.channelType,
+          input.template.provider,
           input.template.variables,
           variables,
         ),
@@ -1686,6 +1773,7 @@ export class AiPlatformService {
         renderedBody,
         providerVariables: this.buildProviderVariables(
           input.channelType,
+          input.template.provider,
           input.template.variables,
           variables,
         ),
@@ -1739,11 +1827,12 @@ export class AiPlatformService {
 
   private buildProviderVariables(
     channelType: string,
+    provider: string,
     variableNames: string[],
     values: Record<string, unknown>,
   ): Prisma.InputJsonValue {
     const variables =
-      channelType === "whatsapp"
+      channelType === "whatsapp" && provider === "twilio"
         ? variableNames.reduce<Record<string, string>>(
             (accumulator, name, index) => {
               accumulator[String(index + 1)] = this.stringifyTemplateValue(
@@ -1811,8 +1900,14 @@ export class AiPlatformService {
     provider: string,
     providerTemplateId?: string | null,
   ) {
-    if (channelType === "whatsapp" && provider !== "twilio") {
-      throw new BadRequestException("WhatsApp templates must use Twilio");
+    if (
+      channelType === "whatsapp" &&
+      provider !== "twilio" &&
+      provider !== "sent_dm"
+    ) {
+      throw new BadRequestException(
+        "WhatsApp templates must use Twilio or Sent.dm",
+      );
     }
 
     if (channelType === "email" && provider !== "brevo") {
@@ -1821,7 +1916,7 @@ export class AiPlatformService {
 
     if (channelType === "whatsapp" && !providerTemplateId?.trim()) {
       throw new BadRequestException(
-        "Twilio WhatsApp templates require a ContentSid",
+        "WhatsApp templates require a provider template id",
       );
     }
   }
@@ -1868,8 +1963,17 @@ export class AiPlatformService {
     }
   }
 
-  private async assertTenantOperational(userId: string, tenantId: string) {
-    await this.tenantAccess.assertTenantAccess(userId, tenantId);
+  private async assertTenantOperational(
+    actorInput: AiPlatformActorInput,
+    tenantId: string,
+  ) {
+    const actor = this.normalizeActor(actorInput);
+    if (actor.type === "admin") {
+      await this.tenantAccess.assertTenantAccess(actor.userId, tenantId);
+    } else if (actor.tenantId !== tenantId) {
+      throw new ForbiddenException("API token cannot access tenant");
+    }
+
     const quota =
       await this.planLimitService.validateTenantRequestQuota(tenantId);
     if (quota.quotaExceeded) {
@@ -2053,24 +2157,71 @@ export class AiPlatformService {
   }
 
   private async audit(
-    tx: Prisma.TransactionClient,
+    tx: Prisma.TransactionClient | PrismaService,
     tenantId: string,
-    userId: string,
+    actorInput: AiPlatformActorInput,
     action: string,
     entity: string,
     entityId?: string,
     metadata?: Prisma.InputJsonValue,
   ) {
+    const actor = this.normalizeActor(actorInput);
     return tx.auditLog.create({
       data: {
         tenantId,
-        actorUserId: userId,
+        actorUserId: this.actorUserId(actor),
         action,
         entity,
         entityId,
-        metadata: metadata ?? undefined,
+        metadata: this.actorMetadata(actor, metadata),
       },
     });
+  }
+
+  private normalizeActor(actor: AiPlatformActorInput): AiPlatformActor {
+    if (typeof actor === "string") {
+      return { type: "admin", userId: actor };
+    }
+
+    return actor;
+  }
+
+  private actorUserId(actor: AiPlatformActor) {
+    return actor.type === "admin" ? actor.userId : null;
+  }
+
+  private actorReference(actor: AiPlatformActor) {
+    return actor.type === "admin"
+      ? actor.userId
+      : `api-token:${actor.apiTokenId}`;
+  }
+
+  private actorMetadata(
+    actor: AiPlatformActor,
+    metadata?: Prisma.InputJsonValue,
+  ): Prisma.InputJsonValue | undefined {
+    if (actor.type === "admin") {
+      return metadata ?? undefined;
+    }
+
+    const base =
+      metadata && typeof metadata === "object" && !Array.isArray(metadata)
+        ? (metadata as Record<string, unknown>)
+        : {};
+    const fallback =
+      metadata && (typeof metadata !== "object" || Array.isArray(metadata))
+        ? { metadataValue: metadata }
+        : {};
+
+    return JSON.parse(
+      JSON.stringify({
+        ...base,
+        ...fallback,
+        actorType: "api_token",
+        apiTokenId: actor.apiTokenId,
+        appId: actor.appId,
+      }),
+    ) as Prisma.InputJsonValue;
   }
 
   private assertKnownAgent(agentId: string) {

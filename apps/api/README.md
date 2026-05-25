@@ -23,6 +23,22 @@ NestJS control-plane API for Basix Core.
 - API tokens are hashed with Argon2 and returned only once at creation.
 - Provider secrets are stored in Vault; API responses return metadata only.
 
+## AI API token routes
+
+External apps can call AI Platform routes with `x-api-key`. These routes infer
+`tenantId` from the token and reject client-supplied `tenantId` fields.
+
+- `/api/ai/crm/contacts`, `/api/ai/crm/pipelines`: `ai:crm:read`,
+  `ai:crm:write`
+- `/api/ai/chats`: `ai:chats:read`, `ai:chats:write`
+- `/api/ai/channels`: `ai:channels:read`, `ai:channels:write`
+- `/api/ai/agents`: `ai:agents:read`, `ai:agents:write`
+- `/api/ai/playbooks`: `ai:playbooks:read`, `ai:playbooks:write`
+- `/api/ai/message-templates`, `/api/ai/campaigns`,
+  `/api/ai/notifications`: `ai:campaigns:read`, `ai:campaigns:write`
+- `/api/ai/queue`: `ai:queue:read`
+- `/api/ai/activities`: `ai:activities:read`
+
 ## Local commands
 
 From the repository root:
